@@ -273,17 +273,15 @@ with st.form("user_info_form"):
         submit_btn = st.form_submit_button("Continue ➔")
 
         if submit_btn:
-            name_val = name_in.strip()
-            if not name_val:
-                st.warning("Please enter your name first!")
-            elif not is_legally_allowed_in_morocco(name_val):
-                st.error("⚠️ This name cannot be entered, please try again!")
-            else:
-                st.session_state.visitor_name = name_val
-                st.session_state.visitor_gender = gender_in
-                st.session_state.visitor_dob = str(dob_in)
-                st.session_state.step = 2
-                st.rerun()
+        name_val = name_in.strip()
+        if not name_val:
+            st.warning("Please enter your name first!")
+        else:
+            st.session_state.visitor_name = name_val
+            st.session_state.visitor_gender = gender_in
+            st.session_state.visitor_dob = str(dob_in)
+            st.session_state.step = 2
+            st.rerun()
 
 # --- الخطوة الثانية: السؤال الرئيسي ---
 elif st.session_state.step == 2:
