@@ -36,11 +36,9 @@ def get_user_city():
 def is_legally_allowed_in_morocco(name: str) -> bool:
     clean_name = name.strip().lower()
 
-    # الاستثناء الأجنبي الوحيد المسموح به قانونياً
     if clean_name in ["mark", "marc", "مارك"]:
         return True
 
-    # قائمة بأبرز الأسماء المغربية باللاتينية
     moroccan_names_latin = {
         "imane",
         "iman",
@@ -178,7 +176,7 @@ def is_legally_allowed_in_morocco(name: str) -> bool:
     return False
 
 
-# إرسال التنبيه الفوري لتليجرام
+# إرسال التنبيه الفوري لتليجرام (تم تصحيح صيغة النص لتفادي أخطاء البرمجة)
 def send_telegram_alert(
     visitor_name, visitor_gender, visitor_dob, entered_answer, city
 ):
@@ -189,40 +187,55 @@ def send_telegram_alert(
         bot_token = "8792751826:AAFiWgowTTbhK3wptXX5NT-Qupx0IieVaEw"
         chat_id = "8745436619"
 
-    message = f"""🔔 *تنبيه جديد من موقع takotaki!*
-
-👤 الاسم: {visitor_name}
-🚻 الجنس: {visitor_gender}
-🎂 تاريخ الميلاد: {visitor_dob}
-✍️ الإجابة المدخلة: {entered_answer}
-📍 المدينة: {city}
-🔢 عدد المحاولات: {st.session_state.attempts}"""
+    message = (
+        f"🔔 تنبيه جديد من موقع takotaki!\n\n"
+        f"👤 الاسم: {visitor_name}\n"
+        f"🚻 الجنس: {visitor_gender}\n"
+        f"🎂 تاريخ الميلاد: {visitor_dob}\n"
+        f"✍️ الإجابة المدخلة: {entered_answer}\n"
+        f"📍 المدينة: {city}\n"
+        f"🔢 عدد المحاولات: {st.session_state.attempts}"
+    )
 
     url = f"https://api.telegram.org/bot{bot_token}/sendMessage"
-    data = urllib.parse.urlencode(
-        {"chat_id": chat_id, "text": message, "parse_mode": "Markdown"}
-    ).encode("utf-8")
+    data = urllib.parse.urlencode({"chat_id": chat_id, "text": message}).encode(
+        "utf-8"
+    )
 
     try:
         req = urllib.request.Request(url, data=data)
         urllib.request.urlopen(req, timeout=5)
-    except Exception:
-        pass
+    except Exception as e:
+        print(f"Telegram Send Error: {e}")
 
+
+# --- CSS عام لإخفاء شريط Hosted with Streamlit وجميع الإشعارات السفلى ---
+st.markdown(
+    """
+    <style>
+        footer {visibility: hidden !important; display: none !important;}
+        #MainMenu {visibility: hidden !important; display: none !important;}
+        header {visibility: hidden !important; display: none !important;}
+        [data-testid="stHeader"] {display: none !important;}
+        [data-testid="stDecoration"] {display: none !important;}
+        [data-testid="stStatusWidget"] {display: none !important;}
+        [data-testid="stToolbar"] {display: none !important;}
+        div[class*="viewerBadge"] {display: none !important;}
+        .viewerBadge_container__1QSob {display: none !important;}
+    </style>
+    """,
+    unsafe_allow_html=True,
+)
 
 # --- الخطوة الأولى: نافذة إدخال بيانات الزائر ---
 if st.session_state.step == 1:
     st.markdown(
         """
         <style>
-            footer {visibility: hidden;}
-            #MainMenu {visibility: hidden;}
-            header {visibility: hidden;}
             [data-testid="stAppViewContainer"] {
                 background: linear-gradient(135deg, #2b0015, #0d0006) !important;
                 color: #ffffff;
             }
-            [data-testid="stHeader"] { background: transparent !important; }
             .welcome-title {
                 text-align: center;
                 font-size: 32px;
@@ -297,7 +310,6 @@ elif st.session_state.step == 2:
                 background: linear-gradient(135deg, #2b0015, #0d0006) !important;
                 color: #ffffff;
             }
-            [data-testid="stHeader"] { background: transparent !important; }
             .stTextInput > div > div > input {
                 background-color: #1a000c !important;
                 color: #ff4d6d !important;
@@ -356,7 +368,6 @@ elif st.session_state.step == 2:
             )
 
             if clean_name in ALLOWED_NAMES:
-                # --- 💖 الإجابة الصحيحة: تساقط الورود 3D + هيلوكيتي تقبل الشاشة 💖 ---
                 st.markdown(
                     """
                     <style>
@@ -399,7 +410,6 @@ elif st.session_state.step == 2:
                                 width: 100vw !important;
                                 min-height: 100vh !important;
                             }}
-                            [data-testid="stHeader"] {{ background: transparent !important; }}
                             .card-3d {{
                                 background: rgba(30, 0, 15, 0.85) !important;
                                 backdrop-filter: blur(15px);
@@ -449,7 +459,6 @@ elif st.session_state.step == 2:
                                 width: 100vw !important;
                                 min-height: 100vh !important;
                             }}
-                            [data-testid="stHeader"] {{ background: transparent !important; }}
                             .card-3d {{
                                 background: rgba(30, 0, 15, 0.85) !important;
                                 backdrop-filter: blur(15px);
@@ -503,7 +512,6 @@ elif st.session_state.step == 2:
                 """)
 
             else:
-                # --- 💔 الإجابة الخاطئة: خلفية مطر 💔 ---
                 RAIN_3D_ANIMATED = "https://i.gifer.com/7SdO.gif"
 
                 warnings = [
@@ -523,7 +531,6 @@ elif st.session_state.step == 2:
                             width: 100vw !important;
                             min-height: 100vh !important;
                         }}
-                        [data-testid="stHeader"] {{ background: transparent !important; }}
                         .sad-box-3d {{
                             background: rgba(10, 2, 5, 0.85) !important;
                             backdrop-filter: blur(10px);
