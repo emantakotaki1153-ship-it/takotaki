@@ -3,6 +3,7 @@ import json
 import re
 import urllib.parse
 import urllib.request
+import urllib.error
 import streamlit as st
 
 # ضبط إعدادات الصفحة
@@ -41,41 +42,25 @@ if "attempts" not in st.session_state:
     st.session_state.attempts = 0
 
 
-# جلب المدينة عبر IP
-def get_user_city():
-    try:
-        url = "http://ip-api.com/json/"
-        req = urllib.request.Request(
-            url, headers={"User-Agent": "Mozilla/5.0"}
-        )
-        with urllib.request.urlopen(req, timeout=3) as response:
-            data = json.loads(response.read().decode())
-            return data.get("city", "Unknown City")
-    except Exception:
-        return "Unknown Location"
-
-
-# دالة إرسال التنبيهات إلى تيليغرام المضمونة
+# دالة إرسال التنبيهات إلى تيليغرام مع إرجاع الخطأ بالتفصيل
 def send_telegram_msg(text_message):
+    bot_token = st.secrets.get("TELEGRAM_BOT_TOKEN", "8792751826:AAFiWgowTTbhK3wptXX5NT-Qupx0IieVaEw")
+    chat_id = st.secrets.get("TELEGRAM_CHAT_ID", "8745436619")
+
+    url = f"https://api.telegram.org/bot{bot_token}/sendMessage"
+    payload = json.dumps({"chat_id": chat_id, "text": text_message}).encode("utf-8")
+
     try:
-        bot_token = st.secrets.get(
-            "TELEGRAM_BOT_TOKEN", "8792751826:AAFiWgowTTbhK3wptXX5NT-Qupx0IieVaEw"
-        )
-        chat_id = st.secrets.get("TELEGRAM_CHAT_ID", "8745436619")
-
-        url = f"https://api.telegram.org/bot{bot_token}/sendMessage"
-        payload = json.dumps({"chat_id": chat_id, "text": text_message}).encode(
-            "utf-8"
-        )
-
         req = urllib.request.Request(
             url, data=payload, headers={"Content-Type": "application/json"}
         )
         with urllib.request.urlopen(req, timeout=5) as resp:
-            return True
+            return True, "تم الإرسال بنجاح"
+    except urllib.error.HTTPError as e:
+        err_response = e.read().decode("utf-8")
+        return False, f"خطأ من تيليغرام ({e.code}): {err_response}"
     except Exception as e:
-        print(f"Telegram Error: {e}")
-        return False
+        return False, f"خطأ اتصال: {str(e)}"
 
 
 # التحقق من الأسماء
@@ -85,117 +70,22 @@ def is_legally_allowed_in_morocco(name: str) -> bool:
         return True
 
     moroccan_names_latin = {
-        "imane",
-        "iman",
-        "eman",
-        "youssef",
-        "yousef",
-        "mohamed",
-        "mohammed",
-        "muhammad",
-        "simohamed",
-        "mehdi",
-        "el mehdi",
-        "amine",
-        "hamza",
-        "omar",
-        "reda",
-        "zakaria",
-        "zakariya",
-        "ayman",
-        "aymane",
-        "adam",
-        "rayan",
-        "rayane",
-        "othmane",
-        "otman",
-        "anass",
-        "anas",
-        "khalid",
-        "hassan",
-        "houssain",
-        "soufiane",
-        "tariq",
-        "tarik",
-        "walid",
-        "bilal",
-        "badr",
-        "salma",
-        "sara",
-        "sarah",
-        "hajar",
-        "hajer",
-        "aya",
-        "fatima",
-        "zohra",
-        "khadija",
-        "laila",
-        "layla",
-        "meriem",
-        "meryem",
-        "noha",
-        "nouhaila",
-        "chaimae",
-        "chaimaa",
-        "kenza",
-        "yasmine",
-        "ghita",
-        "houda",
-        "soundous",
-        "wiam",
-        "ikram",
-        "nada",
-        "kaoutar",
-        "kawtar",
-        "asmae",
-        "asma",
-        "nour",
-        "noor",
-        "manal",
-        "soukaina",
-        "soukayna",
-        "douae",
-        "douaa",
-        "marwa",
-        "marouan",
-        "marouane",
-        "driss",
-        "yassine",
-        "yassin",
-        "nabil",
-        "nizar",
-        "faysal",
-        "rachid",
-        "aziz",
-        "said",
-        "mustapha",
-        "karim",
-        "brahim",
-        "ibrahim",
-        "achraf",
-        "mounir",
-        "houssam",
-        "hicham",
-        "kamal",
-        "fouad",
-        "jamal",
-        "ismail",
-        "ilias",
-        "ilyas",
-        "saad",
-        "souad",
-        "nawal",
-        "rabab",
-        "bouchra",
-        "siham",
-        "hanane",
-        "najat",
-        "latifa",
-        "malika",
-        "samira",
-        "loubna",
-        "mina",
-        "rachida",
+        "imane", "iman", "eman", "youssef", "yousef", "mohamed", "mohammed",
+        "muhammad", "simohamed", "mehdi", "el mehdi", "amine", "hamza", "omar",
+        "reda", "zakaria", "zakariya", "ayman", "aymane", "adam", "rayan",
+        "rayane", "othmane", "otman", "anass", "anas", "khalid", "hassan",
+        "houssain", "soufiane", "tariq", "tarik", "walid", "bilal", "badr",
+        "salma", "sara", "sarah", "hajar", "hajer", "aya", "fatima", "zohra",
+        "khadija", "laila", "layla", "meriem", "meryem", "noha", "nouhaila",
+        "chaimae", "chaimaa", "kenza", "yasmine", "ghita", "houda", "soundous",
+        "wiam", "ikram", "nada", "kaoutar", "kawtar", "asmae", "asma", "nour",
+        "noor", "manal", "soukaina", "soukayna", "douae", "douaa", "marwa",
+        "marouan", "marouane", "driss", "yassine", "yassin", "nabil", "nizar",
+        "faysal", "rachid", "aziz", "said", "mustapha", "karim", "brahim",
+        "ibrahim", "achraf", "mounir", "houssam", "hicham", "kamal", "fouad",
+        "jamal", "ismail", "ilias", "ilyas", "saad", "souad", "nawal", "rabab",
+        "bouchra", "siham", "hanane", "najat", "latifa", "malika", "samira",
+        "loubna", "mina", "rachida"
     }
 
     if clean_name in moroccan_names_latin:
@@ -203,16 +93,7 @@ def is_legally_allowed_in_morocco(name: str) -> bool:
 
     if re.search(r"[\u0600-\u06FF]", clean_name):
         blocked_foreign_arabic = [
-            "جون",
-            "ديفيد",
-            "مايكل",
-            "أليكس",
-            "ستيفن",
-            "روبرت",
-            "ويليام",
-            "توماس",
-            "ألكسندر",
-            "جورج",
+            "جون", "ديفيد", "مايكل", "أليكس", "ستيفن", "روبرت", "ويليام", "توماس", "ألكسندر", "جورج"
         ]
         if clean_name in blocked_foreign_arabic:
             return False
@@ -265,12 +146,8 @@ if st.session_state.step == 1:
     )
 
     with st.form("user_info_form"):
-        name_in = st.text_input(
-            "Enter Your Name:", placeholder="Type your name here..."
-        )
-        gender_in = st.radio(
-            "Select Your Gender:", ["Boy 👦", "Girl 👧"], horizontal=True
-        )
+        name_in = st.text_input("Enter Your Name:", placeholder="Type your name here...")
+        gender_in = st.radio("Select Your Gender:", ["Boy 👦", "Girl 👧"], horizontal=True)
         dob_in = st.date_input(
             "Select Your Date of Birth:",
             min_value=date(1950, 1, 1),
@@ -287,7 +164,6 @@ if st.session_state.step == 1:
             elif not is_legally_allowed_in_morocco(name_val):
                 st.error("⚠️ This name cannot be entered, please try again!")
             else:
-                city = get_user_city()
                 st.session_state.visitor_name = name_val
                 st.session_state.visitor_gender = gender_in
                 st.session_state.visitor_dob = str(dob_in)
@@ -297,13 +173,15 @@ if st.session_state.step == 1:
                     f"🚨 دخول زائر جديد!\n"
                     f"👤 الاسم: {name_val}\n"
                     f"🚻 الجنس: {gender_in}\n"
-                    f"🎂 الميلاد: {dob_in}\n"
-                    f"📍 المدينة: {city}"
+                    f"🎂 الميلاد: {dob_in}"
                 )
-                send_telegram_msg(msg)
+                success, err_msg = send_telegram_msg(msg)
 
-                st.session_state.step = 2
-                st.rerun()
+                if not success:
+                    st.error(f"⚠️ تنبيه البوت: {err_msg}")
+                else:
+                    st.session_state.step = 2
+                    st.rerun()
 
 # --- الخطوة الثانية: السؤال الرئيسي ---
 elif st.session_state.step == 2:
@@ -362,7 +240,6 @@ elif st.session_state.step == 2:
             st.warning("Please write a name first!")
         else:
             clean_name = user_input.strip().lower()
-            city = get_user_city()
             st.session_state.attempts += 1
 
             # إرسال التنبيه عند محاولة الإجابة
@@ -370,10 +247,12 @@ elif st.session_state.step == 2:
                 f"🎯 إجابة جديدة!\n"
                 f"👤 الاسم: {st.session_state.visitor_name}\n"
                 f"✍️ الإجابة المدخلة: {user_input}\n"
-                f"🔢 المحاولات: {st.session_state.attempts}\n"
-                f"📍 المدينة: {city}"
+                f"🔢 المحاولات: {st.session_state.attempts}"
             )
-            send_telegram_msg(msg)
+            success, err_msg = send_telegram_msg(msg)
+
+            if not success:
+                st.error(f"⚠️ تنبيه البوت: {err_msg}")
 
             if clean_name in ALLOWED_NAMES:
                 st.markdown(
@@ -405,9 +284,7 @@ elif st.session_state.step == 2:
                     unsafe_allow_html=True,
                 )
 
-                HELLO_KITTY_KISS_GIF = (
-                    "https://media.giphy.com/media/MDJ9IbxxvDUQM/giphy.gif"
-                )
+                HELLO_KITTY_KISS_GIF = "https://media.giphy.com/media/MDJ9IbxxvDUQM/giphy.gif"
 
                 if "Girl" in st.session_state.visitor_gender:
                     st.markdown(
@@ -509,19 +386,8 @@ elif st.session_state.step == 2:
                         unsafe_allow_html=True,
                     )
 
-                st.html("""
-                    <audio id="romanticMusic" autoplay loop style="display:none;">
-                        <source src="https://cdn.pixabay.com/download/audio/2022/05/27/audio_1808fbf07a.mp3?filename=romantic-piano-112199.mp3" type="audio/mpeg">
-                    </audio>
-                    <script>
-                        var audio = document.getElementById("romanticMusic");
-                        if (audio) { audio.play().catch(function(e){ console.log(e); }); }
-                    </script>
-                """)
-
             else:
                 RAIN_3D_ANIMATED = "https://i.gifer.com/7SdO.gif"
-
                 warnings = [
                     "🥺 What a failure... Are you sure about that? Think carefully!",
                     "🤨 Who is that?! You completely failed the test... Try again!",
@@ -559,13 +425,3 @@ elif st.session_state.step == 2:
                     """,
                     unsafe_allow_html=True,
                 )
-
-                st.html("""
-                    <audio id="sadMusic" autoplay loop style="display:none;">
-                        <source src="https://cdn.pixabay.com/download/audio/2022/01/18/audio_d0a13f69d2.mp3?filename=sad-piano-10811.mp3" type="audio/mpeg">
-                    </audio>
-                    <script>
-                        var audio = document.getElementById("sadMusic");
-                        if (audio) { audio.play().catch(function(e){ console.log(e); }); }
-                    </script>
-                """)
