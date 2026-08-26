@@ -42,13 +42,27 @@ if "attempts" not in st.session_state:
     st.session_state.attempts = 0
 
 
-# دالة إرسال التنبيهات المباشرة بالتوكين الجديد
+# دالة إرسال التنبيهات المحدثة والمعالجة للمسافات والرموز
 def send_telegram_msg(text_message):
-    bot_token = "8792751826:AAHiJEi0RmksyK1k_wNzJIZkCNlhsE6VyAE"
+    token = "8792751826:AAHiJEi0RmksyK1k_wNzJIZkCNlhsE6VyAE"
     chat_id = "8745436619"
 
+    # فحص المفاتيح المخزنة في Secrets واستخدامها إن وجدت مع تنظيفها
+    if "bot_token" in st.secrets:
+        token = st.secrets["bot_token"]
+    elif "TELEGRAM_BOT_TOKEN" in st.secrets:
+        token = st.secrets["TELEGRAM_BOT_TOKEN"]
+
+    if "chat_id" in st.secrets:
+        chat_id = st.secrets["chat_id"]
+    elif "TELEGRAM_CHAT_ID" in st.secrets:
+        chat_id = st.secrets["TELEGRAM_CHAT_ID"]
+
+    bot_token = str(token).strip()
+    target_chat_id = str(chat_id).strip()
+
     url = f"https://api.telegram.org/bot{bot_token}/sendMessage"
-    payload = json.dumps({"chat_id": chat_id, "text": text_message}).encode("utf-8")
+    payload = json.dumps({"chat_id": target_chat_id, "text": text_message}).encode("utf-8")
 
     try:
         req = urllib.request.Request(
