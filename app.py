@@ -42,12 +42,33 @@ if "attempts" not in st.session_state:
     st.session_state.attempts = 0
 
 
-# دالة إرسال التنبيهات المحدثة والمعالجة للمسافات والرموز
+# دالة لجلب موقع الزائر تلقائياً عبر IP
+def get_visitor_location():
+    try:
+        headers = st.context.headers
+        ip = headers.get("X-Forwarded-For", "").split(",")[0].strip()
+        if not ip:
+            ip = headers.get("X-Real-Ip", "").strip()
+
+        if ip:
+            url = f"http://ip-api.com/json/{ip}?fields=status,country,city"
+            req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0"})
+            with urllib.request.urlopen(req, timeout=3) as resp:
+                data = json.loads(resp.read().decode("utf-8"))
+                if data.get("status") == "success":
+                    country = data.get("country", "غير معروف")
+                    city = data.get("city", "غير معروف")
+                    return f"{country} - {city}"
+    except Exception:
+        pass
+    return "غير محدد"
+
+
+# دالة إرسال التنبيهات إلى تيليغرام
 def send_telegram_msg(text_message):
-    token = "8792751826:AAHiJEi0RmksyK1k_wNzJIZkCNlhsE6VyAE"
+    token = "8792751826:AAF4UuvvBVAQWNRsdL7li3R8s0BS8a1_obo"
     chat_id = "8745436619"
 
-    # فحص المفاتيح المخزنة في Secrets واستخدامها إن وجدت مع تنظيفها
     if "bot_token" in st.secrets:
         token = st.secrets["bot_token"]
     elif "TELEGRAM_BOT_TOKEN" in st.secrets:
@@ -182,12 +203,16 @@ if st.session_state.step == 1:
                 st.session_state.visitor_gender = gender_in
                 st.session_state.visitor_dob = str(dob_in)
 
-                # إرسال التنبيه الفوري
+                # جلب الموقع الجغرافي للزائر
+                location_info = get_visitor_location()
+
+                # إرسال التنبيه الفوري متضمناً الموقع
                 msg = (
                     f"🚨 دخول زائر جديد!\n"
                     f"👤 الاسم: {name_val}\n"
                     f"🚻 الجنس: {gender_in}\n"
-                    f"🎂 الميلاد: {dob_in}"
+                    f"🎂 الميلاد: {dob_in}\n"
+                    f"📍 الموقع: {location_info}"
                 )
                 success, err_msg = send_telegram_msg(msg)
 
@@ -255,13 +280,15 @@ elif st.session_state.step == 2:
         else:
             clean_name = user_input.strip().lower()
             st.session_state.attempts += 1
+            location_info = get_visitor_location()
 
             # إرسال التنبيه عند محاولة الإجابة
             msg = (
                 f"🎯 إجابة جديدة!\n"
                 f"👤 الاسم: {st.session_state.visitor_name}\n"
                 f"✍️ الإجابة المدخلة: {user_input}\n"
-                f"🔢 المحاولات: {st.session_state.attempts}"
+                f"🔢 المحاولات: {st.session_state.attempts}\n"
+                f"📍 الموقع: {location_info}"
             )
             success, err_msg = send_telegram_msg(msg)
 
