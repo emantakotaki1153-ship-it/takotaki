@@ -1,200 +1,550 @@
-import datetime
 from datetime import date
 import json
-import os
 import re
 import urllib.parse
 import urllib.request
 import streamlit as st
 
-# ضبط إعدادات الصفحة
-st.set_page_config(
-    page_title="takotaki 🌸", page_icon="🧸", layout="centered"
-)
+# ضبط إعدادات الصفحة واسم الموقع takotaki
+st.set_page_config(page_title="takotaki 🌸", page_icon="🥀", layout="centered")
 
-
-# دالة إرسال التنبيه الفوري إلى بوت التليجرام
-def send_telegram_notification(name, gender, dob):
-    try:
-        token = st.secrets.get("TELEGRAM_BOT_TOKEN")
-        chat_id = st.secrets.get("TELEGRAM_CHAT_ID")
-        if token and chat_id:
-            text = f"🚨 **زائر جديد في الموقع!**\n\n👤 **الاسم:** {name}\n🚻 **الجنس:** {gender}\n📅 **تاريخ الميلاد:** {dob}"
-            url = f"https://api.telegram.org/bot{token}/sendMessage"
-            data = urllib.parse.urlencode(
-                {"chat_id": chat_id, "text": text, "parse_mode": "Markdown"}
-            ).encode("utf-8")
-            req = urllib.request.Request(url, data=data)
-            urllib.request.urlopen(req)
-    except Exception:
-        pass
-
-
-# تهيئة متغيرات الجلسة للتحكم بالنوافذ والمراحل المتعددة
+# تهيئة متغيرات الجلسة (Session State)
 if "step" not in st.session_state:
     st.session_state.step = 1
 if "visitor_name" not in st.session_state:
     st.session_state.visitor_name = ""
 if "visitor_gender" not in st.session_state:
-    st.session_state.visitor_gender = "Girl 👧"
+    st.session_state.visitor_gender = "Boy 👦"
 if "visitor_dob" not in st.session_state:
-    st.session_state.visitor_dob = "2000/01/01"
+    st.session_state.visitor_dob = ""
+if "attempts" not in st.session_state:
+    st.session_state.attempts = 0
 
-# التصميم البصري ثلاثي الأبعاد والبطاقات
-st.markdown(
-    """
-<style>
-    .stApp {
-        background: linear-gradient(135deg, #1a080c 0%, #3d0c1e 50%, #1a080c 100%);
-        color: #ffffff;
-    }
-    .main-title {
-        text-align: center;
-        color: #ff4d6d;
-        font-size: 32px;
-        font-weight: bold;
-        margin-bottom: 25px;
-        text-shadow: 0 0 10px rgba(255, 77, 109, 0.5);
-    }
-    .custom-card {
-        background: rgba(255, 255, 255, 0.05);
-        backdrop-filter: blur(10px);
-        border: 1px solid rgba(255, 77, 109, 0.3);
-        border-radius: 15px;
-        padding: 25px;
-        box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
-    }
-    .sad-box-3d {
-        background: rgba(40, 10, 20, 0.85);
-        backdrop-filter: blur(10px);
-        color: #ff4d6d;
-        padding: 30px;
-        border-radius: 20px;
-        text-align: center;
-        border: 2px solid #ff0055;
-        box-shadow: 0 0 40px rgba(255, 0, 85, 0.7);
-        font-size: 22px;
-        font-weight: bold;
-        margin-top: 20px;
-        margin-bottom: 20px;
-    }
-</style>
-""",
-    unsafe_allow_html=True,
-)
 
-# ---------------- النافذة الأولى: نموذج إدخال البيانات ----------------
+# جلب المدينة عبر IP
+def get_user_city():
+    try:
+        url = "http://ip-api.com/json/"
+        response = urllib.request.urlopen(url, timeout=3)
+        data = json.loads(response.read().decode())
+        return data.get("city", "Unknown City")
+    except Exception:
+        return "Unknown Location"
+
+
+# التحقق من قانونية الاسم في المغرب (قبول الأسماء المغربية + الاستثناء الوحيد Mark)
+def is_legally_allowed_in_morocco(name: str) -> bool:
+    clean_name = name.strip().lower()
+
+    # الاستثناء الأجنبي الوحيد المسموح به قانونياً
+    if clean_name in ["mark", "marc", "مارك"]:
+        return True
+
+    # قائمة بأبرز الأسماء المغربية باللاتينية
+    moroccan_names_latin = {
+        "imane",
+        "iman",
+        "eman",
+        "youssef",
+        "yousef",
+        "mohamed",
+        "mohammed",
+        "muhammad",
+        "simohamed",
+        "mehdi",
+        "el mehdi",
+        "amine",
+        "hamza",
+        "omar",
+        "reda",
+        "zakaria",
+        "zakariya",
+        "ayman",
+        "aymane",
+        "adam",
+        "rayan",
+        "rayane",
+        "othmane",
+        "otman",
+        "anass",
+        "anas",
+        "khalid",
+        "hassan",
+        "houssain",
+        "soufiane",
+        "tariq",
+        "tarik",
+        "walid",
+        "bilal",
+        "badr",
+        "salma",
+        "sara",
+        "sarah",
+        "hajar",
+        "hajer",
+        "aya",
+        "fatima",
+        "zohra",
+        "khadija",
+        "laila",
+        "layla",
+        "meriem",
+        "meryem",
+        "noha",
+        "nouhaila",
+        "chaimae",
+        "chaimaa",
+        "kenza",
+        "yasmine",
+        "ghita",
+        "houda",
+        "soundous",
+        "wiam",
+        "ikram",
+        "nada",
+        "kaoutar",
+        "kawtar",
+        "asmae",
+        "asma",
+        "nour",
+        "noor",
+        "manal",
+        "soukaina",
+        "soukayna",
+        "douae",
+        "douaa",
+        "marwa",
+        "marouan",
+        "marouane",
+        "driss",
+        "yassine",
+        "yassin",
+        "nabil",
+        "nizar",
+        "faysal",
+        "rachid",
+        "aziz",
+        "said",
+        "mustapha",
+        "karim",
+        "brahim",
+        "ibrahim",
+        "achraf",
+        "mounir",
+        "houssam",
+        "hicham",
+        "kamal",
+        "fouad",
+        "jamal",
+        "ismail",
+        "ilias",
+        "ilyas",
+        "saad",
+        "souad",
+        "nawal",
+        "rabab",
+        "bouchra",
+        "siham",
+        "hanane",
+        "najat",
+        "latifa",
+        "malika",
+        "samira",
+        "loubna",
+        "mina",
+        "rachida",
+    }
+
+    if clean_name in moroccan_names_latin:
+        return True
+
+    if re.search(r"[\u0600-\u06FF]", clean_name):
+        blocked_foreign_arabic = [
+            "جون",
+            "ديفيد",
+            "مايكل",
+            "أليكس",
+            "ستيفن",
+            "روبرت",
+            "ويليام",
+            "توماس",
+            "ألكسندر",
+            "جورج",
+        ]
+        if clean_name in blocked_foreign_arabic:
+            return False
+        return True
+
+    return False
+
+
+# إرسال التنبيه الفوري لتليجرام
+def send_telegram_alert(
+    visitor_name, visitor_gender, visitor_dob, entered_answer, city
+):
+    try:
+        bot_token = st.secrets["TELEGRAM_BOT_TOKEN"]
+        chat_id = st.secrets["TELEGRAM_CHAT_ID"]
+    except Exception:
+        bot_token = "8792751826:AAFiWgowTTbhK3wptXX5NT-Qupx0IieVaEw"
+        chat_id = "8745436619"
+
+    message = f"""🔔 *تنبيه جديد من موقع takotaki!*
+
+👤 الاسم: {visitor_name}
+🚻 الجنس: {visitor_gender}
+🎂 تاريخ الميلاد: {visitor_dob}
+✍️ الإجابة المدخلة: {entered_answer}
+📍 المدينة: {city}
+🔢 عدد المحاولات: {st.session_state.attempts}"""
+
+    url = f"https://api.telegram.org/bot{bot_token}/sendMessage"
+    data = urllib.parse.urlencode(
+        {"chat_id": chat_id, "text": message, "parse_mode": "Markdown"}
+    ).encode("utf-8")
+
+    try:
+        req = urllib.request.Request(url, data=data)
+        urllib.request.urlopen(req, timeout=5)
+    except Exception:
+        pass
+
+
+# --- الخطوة الأولى: نافذة إدخال بيانات الزائر ---
 if st.session_state.step == 1:
     st.markdown(
-        "<h1 class='main-title'>✨ Welcome to takotaki! ✨</h1>",
+        """
+        <style>
+            [data-testid="stAppViewContainer"] {
+                background: linear-gradient(135deg, #2b0015, #0d0006) !important;
+                color: #ffffff;
+            }
+            [data-testid="stHeader"] { background: transparent !important; }
+            .welcome-title {
+                text-align: center;
+                font-size: 32px;
+                font-weight: bold;
+                color: #ff4d6d;
+                text-shadow: 0 0 15px rgba(255, 77, 109, 0.8);
+                margin-bottom: 25px;
+            }
+            .stTextInput > div > div > input, .stDateInput > div > div > input {
+                background-color: #1a000c !important;
+                color: #ffffff !important;
+                border: 2px solid #ff2a6d !important;
+                border-radius: 12px;
+            }
+            div[data-baseweb="radio"] label { color: #ffffff !important; }
+            .stButton > button {
+                background: linear-gradient(135deg, #ff0055, #ff2a6d) !important;
+                color: white !important;
+                border-radius: 12px !important;
+                border: none !important;
+                width: 100%;
+                font-size: 18px !important;
+                font-weight: bold !important;
+                padding: 10px !important;
+            }
+        </style>
+        <div class="welcome-title">✨ Welcome to takotaki! ✨</div>
+    """,
         unsafe_allow_html=True,
     )
 
-    with st.container():
-        st.markdown("<div class='custom-card'>", unsafe_allow_html=True)
-
-        name_input = st.text_input(
+    with st.form("user_info_form"):
+        name_in = st.text_input(
             "Enter Your Name:", placeholder="Type your name here..."
         )
-
-        gender_input = st.radio(
-            "Select Your Gender:",
-            ["Boy 👦", "Girl 👧"],
-            horizontal=True,
-            index=1,
+        gender_in = st.radio(
+            "Select Your Gender:", ["Boy 👦", "Girl 👧"], horizontal=True
         )
-
-        dob_input = st.date_input(
+        dob_in = st.date_input(
             "Select Your Date of Birth:",
-            value=datetime.date(2000, 1, 27),
-            min_value=datetime.date(1950, 1, 1),
-            max_value=datetime.date.today(),
+            min_value=date(1950, 1, 1),
+            max_value=date.today(),
+            value=date(2000, 1, 1),
         )
 
-        submit_btn = st.button("Continue ➔")
-
-        st.markdown("</div>", unsafe_allow_html=True)
+        submit_btn = st.form_submit_button("Continue ➔")
 
         if submit_btn:
-            clean_name = name_input.strip()
-
-            # قبول جميع الأسماء المكتبوبة بالحروف اللاتينية (مثل asmaa)
-            if len(clean_name) >= 2 and re.match(
-                r"^[a-zA-Z\s\'-]+$", clean_name
-            ):
-                st.session_state.visitor_name = clean_name
-                st.session_state.visitor_gender = gender_input
-                st.session_state.visitor_dob = str(dob_input)
-
-                # إرسال التنبيه الفوري لتليجرام
-                send_telegram_notification(
-                    clean_name, gender_input, str(dob_input)
-                )
-
+            name_val = name_in.strip()
+            if not name_val:
+                st.warning("Please enter your name first!")
+            elif not is_legally_allowed_in_morocco(name_val):
+                st.error("⚠️ This name cannot be entered, please try again!")
+            else:
+                st.session_state.visitor_name = name_val
+                st.session_state.visitor_gender = gender_in
+                st.session_state.visitor_dob = str(dob_in)
                 st.session_state.step = 2
                 st.rerun()
-            else:
-                st.error(
-                    "⚠️ Please enter a valid name using Latin letters (e.g., asmaa, soukaina)!"
+
+# --- الخطوة الثانية: السؤال الرئيسي ---
+elif st.session_state.step == 2:
+    ALLOWED_NAMES = ["imane", "iman", "eman"]
+
+    st.markdown(
+        """
+        <style>
+            [data-testid="stAppViewContainer"] {
+                background: linear-gradient(135deg, #2b0015, #0d0006) !important;
+                color: #ffffff;
+            }
+            [data-testid="stHeader"] { background: transparent !important; }
+            .stTextInput > div > div > input {
+                background-color: #1a000c !important;
+                color: #ff4d6d !important;
+                border: 2px solid #ff0055 !important;
+                border-radius: 12px;
+                text-align: center;
+                font-size: 20px;
+                box-shadow: 0 0 15px rgba(255, 0, 85, 0.4);
+            }
+            .main-title {
+                text-align: center;
+                font-size: 32px;
+                font-weight: bold;
+                color: #ff4d6d;
+                text-shadow: 0 0 20px rgba(255, 77, 109, 0.8);
+                margin-bottom: 25px;
+            }
+            .stButton > button {
+                background: linear-gradient(135deg, #ff0055, #ff2a6d) !important;
+                color: white !important;
+                border-radius: 12px !important;
+                border: none !important;
+                width: 100%;
+                font-size: 18px !important;
+                font-weight: bold !important;
+                padding: 12px !important;
+                margin-top: 10px;
+            }
+        </style>
+        <div class="main-title">🥀 takotaki: A Secret Test For Your Loyalty... 👁️</div>
+    """,
+        unsafe_allow_html=True,
+    )
+
+    user_input = st.text_input(
+        "",
+        placeholder="Who is the only girl in your mind now?...",
+        key="loyalty_input",
+    )
+    check_btn = st.button("Reveal Loyalty Result ✨")
+
+    if check_btn:
+        if not user_input.strip():
+            st.warning("Please write a name first!")
+        else:
+            clean_name = user_input.strip().lower()
+            city = get_user_city()
+            st.session_state.attempts += 1
+
+            send_telegram_alert(
+                visitor_name=st.session_state.visitor_name,
+                visitor_gender=st.session_state.visitor_gender,
+                visitor_dob=st.session_state.visitor_dob,
+                entered_answer=user_input,
+                city=city,
+            )
+
+            if clean_name in ALLOWED_NAMES:
+                # --- 💖 الإجابة الصحيحة: تساقط الورود 3D + هيلوكيتي تقبل الشاشة 💖 ---
+                st.markdown(
+                    """
+                    <style>
+                        @keyframes roseFall {
+                            0% { transform: translateY(-10vh) rotate(0deg) scale(0.8); opacity: 1; }
+                            100% { transform: translateY(105vh) rotate(360deg) scale(1.3); opacity: 0.2; }
+                        }
+                        .rose {
+                            position: fixed;
+                            top: -50px;
+                            font-size: 32px;
+                            animation-name: roseFall;
+                            animation-timing-function: linear;
+                            animation-iteration-count: infinite;
+                            z-index: 99999;
+                            pointer-events: none;
+                        }
+                    </style>
+                    <div class="rose" style="left:5%; animation-duration:5s; animation-delay:0s;">🌹</div>
+                    <div class="rose" style="left:18%; animation-duration:7s; animation-delay:1s;">🌹</div>
+                    <div class="rose" style="left:32%; animation-duration:6s; animation-delay:0.5s;">🌹</div>
+                    <div class="rose" style="left:48%; animation-duration:8s; animation-delay:2s;">🌹</div>
+                    <div class="rose" style="left:62%; animation-duration:5.5s; animation-delay:1.5s;">🌹</div>
+                    <div class="rose" style="left:78%; animation-duration:6.5s; animation-delay:0.2s;">🌹</div>
+                    <div class="rose" style="left:90%; animation-duration:7.5s; animation-delay:2.5s;">🌹</div>
+                """,
+                    unsafe_allow_html=True,
                 )
 
-# ---------------- النافذة الثانية: المرحلة التفاعلية الأولى ----------------
-elif st.session_state.step == 2:
-    st.markdown(
-        f"<h1 class='main-title'>Welcome, {st.session_state.visitor_name}! 🎉</h1>",
-        unsafe_allow_html=True,
-    )
+                HELLO_KITTY_KISS_GIF = (
+                    "https://media.giphy.com/media/MDJ9IbxxvDUQM/giphy.gif"
+                )
 
-    st.markdown(
-        f"""
-    <div class="sad-box-3d">
-        Hello {st.session_state.visitor_name}! 👋<br><br>
-        Are you ready to discover what takotaki prepared for you?
-    </div>
-    """,
-        unsafe_allow_html=True,
-    )
+                if "Girl" in st.session_state.visitor_gender:
+                    st.markdown(
+                        f"""
+                        <style>
+                            [data-testid="stAppViewContainer"] {{
+                                background: radial-gradient(circle, #3d001e 0%, #15000a 100%) !important;
+                                width: 100vw !important;
+                                min-height: 100vh !important;
+                            }}
+                            [data-testid="stHeader"] {{ background: transparent !important; }}
+                            .card-3d {{
+                                background: rgba(30, 0, 15, 0.85) !important;
+                                backdrop-filter: blur(15px);
+                                border-radius: 25px;
+                                padding: 30px;
+                                text-align: center;
+                                border: 2px solid #ff4d6d;
+                                box-shadow: 0 0 40px rgba(255, 77, 109, 0.6);
+                            }}
+                            .card-header {{
+                                font-size: 30px;
+                                font-weight: bold;
+                                color: #ff4d6d !important;
+                                text-shadow: 0 0 15px rgba(255, 77, 109, 0.9);
+                                margin-bottom: 15px;
+                            }}
+                            .card-body-text {{ font-size: 19px; line-height: 1.7; font-weight: 600; color: #ffffff; }}
+                            .hk-kiss-img {{
+                                width: 180px;
+                                margin-top: 15px;
+                                filter: drop-shadow(0 0 15px #ff4d6d);
+                                animation: floatHK 3s ease-in-out infinite alternate;
+                            }}
+                            @keyframes floatHK {{
+                                0% {{ transform: translateY(0px) scale(1); }}
+                                100% {{ transform: translateY(-10px) scale(1.05); }}
+                            }}
+                        </style>
+                        <div class="card-3d">
+                            <div class="card-header">💖 Best Girl! You Passed The Test! 💖</div>
+                            <div class="card-body-text">
+                                🌸 You remembered your most amazing best friend & sister: <b>IMANE</b>! 🌸<br><br>
+                                You are such an incredible girl, the absolute best sister, and the most wonderful friend anyone could ever ask for! 👑✨<br><br>
+                                💐 Thank you for being so genuine, supportive, and truly sweet! Pure sisterhood and forever friendship! 🎀👯‍♀️💖
+                            </div>
+                            <img src="{HELLO_KITTY_KISS_GIF}" class="hk-kiss-img" alt="Hello Kitty Kiss">
+                        </div>
+                    """,
+                        unsafe_allow_html=True,
+                    )
+                else:
+                    st.markdown(
+                        f"""
+                        <style>
+                            [data-testid="stAppViewContainer"] {{
+                                background: radial-gradient(circle, #3d001e 0%, #15000a 100%) !important;
+                                width: 100vw !important;
+                                min-height: 100vh !important;
+                            }}
+                            [data-testid="stHeader"] {{ background: transparent !important; }}
+                            .card-3d {{
+                                background: rgba(30, 0, 15, 0.85) !important;
+                                backdrop-filter: blur(15px);
+                                border-radius: 25px;
+                                padding: 30px;
+                                text-align: center;
+                                border: 2px solid #ff4d6d;
+                                box-shadow: 0 0 40px rgba(255, 77, 109, 0.6);
+                            }}
+                            .card-header {{
+                                font-size: 30px;
+                                font-weight: bold;
+                                color: #ff4d6d !important;
+                                text-shadow: 0 0 15px rgba(255, 77, 109, 0.9);
+                                margin-bottom: 15px;
+                            }}
+                            .card-body-text {{ font-size: 19px; line-height: 1.7; font-weight: 600; color: #ffffff; }}
+                            .hk-kiss-img {{
+                                width: 180px;
+                                margin-top: 15px;
+                                filter: drop-shadow(0 0 15px #ff4d6d);
+                                animation: floatHK 3s ease-in-out infinite alternate;
+                            }}
+                            @keyframes floatHK {{
+                                0% {{ transform: translateY(0px) scale(1); }}
+                                100% {{ transform: translateY(-10px) scale(1.05); }}
+                            }}
+                        </style>
+                        <div class="card-3d">
+                            <div class="card-header">✨ Good Boy! You Passed The Test! ✨</div>
+                            <div class="card-body-text">
+                                🌸 You remembered the only queen: <b>IMANE</b>! 🌸<br><br>
+                                She is the light in every darkness, the blooming rose in every garden, 
+                                and the only dream this heart will ever chase. 👑✨<br><br>
+                                💋 Sending you endless roses and sweet affection! You are a loyal, good boy! 🌹💕
+                            </div>
+                            <img src="{HELLO_KITTY_KISS_GIF}" class="hk-kiss-img" alt="Hello Kitty Kiss">
+                        </div>
+                    """,
+                        unsafe_allow_html=True,
+                    )
 
-    col1, col2 = st.columns(2)
-    with col1:
-        if st.button("Next Step ➔"):
-            st.session_state.step = 3
-            st.rerun()
-    with col2:
-        if st.button("Back 🔄"):
-            st.session_state.step = 1
-            st.rerun()
+                st.html("""
+                    <audio id="romanticMusic" autoplay loop style="display:none;">
+                        <source src="https://cdn.pixabay.com/download/audio/2022/05/27/audio_1808fbf07a.mp3?filename=romantic-piano-112199.mp3" type="audio/mpeg">
+                    </audio>
+                    <script>
+                        var audio = document.getElementById("romanticMusic");
+                        if (audio) { audio.play().catch(function(e){ console.log(e); }); }
+                    </script>
+                """)
 
-# ---------------- النافذة الثالثة: النافذة الخاصة مع الصوت ----------------
-elif st.session_state.step == 3:
-    st.markdown(
-        f"<h1 class='main-title'>✨ Special Message for {st.session_state.visitor_name} ✨</h1>",
-        unsafe_allow_html=True,
-    )
+            else:
+                # --- 💔 الإجابة الخاطئة: خلفية مطر 💔 ---
+                RAIN_3D_ANIMATED = "https://i.gifer.com/7SdO.gif"
 
-    st.markdown(
-        f"""
-    <div class="sad-box-3d">
-        💖 Thank you for visiting takotaki! 💖<br><br>
-        Have a wonderful day ahead!
-    </div>
-    """,
-        unsafe_allow_html=True,
-    )
+                warnings = [
+                    "🥺 What a failure... Are you sure about that? Think carefully!",
+                    "🤨 Who is that?! You completely failed the test... Try again!",
+                    "💔 Total disappointment! Wrong answer... You failed so badly!",
+                    "🔥 LAST CHANCE! Such a failure... Type the RIGHT name now!",
+                ]
+                msg_idx = min(st.session_state.attempts - 1, len(warnings) - 1)
+                current_warning = warnings[msg_idx]
 
-    # تشغيل الصوت في هذه النافذة
-    st.html(
-        """
-    <audio id="sadMusic" autoplay loop style="display:none;">
-        <source src="https://cdn.pixabay.com/download/audio/2022/01/18/audio_d0a13f69d2.mp3?filename=sad-piano-10811.mp3" type="audio/mpeg">
-    </audio>
-    <script>
-        var audio = document.getElementById("sadMusic");
-        if (audio) { audio.play().catch(function(e) { console.log(e); }); }
-    </script>
-    """
-    )
+                st.markdown(
+                    f"""
+                    <style>
+                        [data-testid="stAppViewContainer"] {{
+                            background: #05020a url('{RAIN_3D_ANIMATED}') center center / cover no-repeat fixed !important;
+                            width: 100vw !important;
+                            min-height: 100vh !important;
+                        }}
+                        [data-testid="stHeader"] {{ background: transparent !important; }}
+                        .sad-box-3d {{
+                            background: rgba(10, 2, 5, 0.85) !important;
+                            backdrop-filter: blur(10px);
+                            color: #ff4d6d;
+                            padding: 30px;
+                            border-radius: 20px;
+                            text-align: center;
+                            border: 2px solid #ff0055;
+                            box-shadow: 0 0 40px rgba(255, 0, 85, 0.7);
+                            font-size: 22px;
+                            font-weight: bold;
+                            margin-top: 20px;
+                        }}
+                    </style>
+                    <div class="sad-box-3d">
+                        {current_warning}
+                    </div>
+                """,
+                    unsafe_allow_html=True,
+                )
 
-    if st.button("Start Again 🔄"):
-        st.session_state.step = 1
-        st.rerun()
+                st.html("""
+                    <audio id="sadMusic" autoplay loop style="display:none;">
+                        <source src="https://cdn.pixabay.com/download/audio/2022/01/18/audio_d0a13f69d2.mp3?filename=sad-piano-10811.mp3" type="audio/mpeg">
+                    </audio>
+                    <script>
+                        var audio = document.getElementById("sadMusic");
+                        if (audio) { audio.play().catch(function(e){ console.log(e); }); }
+                    </script>
+                """)
