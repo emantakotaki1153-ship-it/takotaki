@@ -215,6 +215,9 @@ if st.session_state.step == 1:
     st.markdown(
         """
         <style>
+        footer {visibility: hidden;}
+#MainMenu {visibility: hidden;}
+header {visibility: hidden;}
             [data-testid="stAppViewContainer"] {
                 background: linear-gradient(135deg, #2b0015, #0d0006) !important;
                 color: #ffffff;
