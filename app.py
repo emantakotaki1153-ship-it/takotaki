@@ -256,7 +256,7 @@ st.markdown(
     '<div class="welcome-title">✨ Welcome to takotaki! ✨</div>',
     unsafe_allow_html=True,
 )
-    with st.form("user_info_form"):
+with st.form("user_info_form"):
         name_in = st.text_input(
             "Enter Your Name:", placeholder="Type your name here..."
         )
