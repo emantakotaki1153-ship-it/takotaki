@@ -1,25 +1,24 @@
 from datetime import date
 import json
 import re
-import requests
+import urllib.parse
 import urllib.request
 import streamlit as st
 
 # ضبط إعدادات الصفحة
 st.set_page_config(page_title="takotaki 🌸", page_icon="🥀", layout="centered")
 
-# --- إخفاء شريط Streamlit السفلي والعلوي بشكل كامل ---
+# --- إخفاء شريط Streamlit السفلي والعلوي بالكامل ---
 st.markdown(
     """
     <style>
-        footer {display: none !important; visibility: hidden !important; opacity: 0 !important;}
+        footer {display: none !important; visibility: hidden !important;}
         .stAppFooter {display: none !important; visibility: hidden !important;}
         [data-testid="stFooter"] {display: none !important; visibility: hidden !important;}
         [data-testid="stHeader"] {display: none !important; visibility: hidden !important;}
         #MainMenu {display: none !important; visibility: hidden !important;}
         header {display: none !important; visibility: hidden !important;}
         div[class*="viewerBadge"] {display: none !important; visibility: hidden !important;}
-        div[class*="styles_viewerBadge"] {display: none !important; visibility: hidden !important;}
         .viewerBadge_container__1QSob {display: none !important; visibility: hidden !important;}
         [data-testid="stDecoration"] {display: none !important;}
         [data-testid="stStatusWidget"] {display: none !important;}
@@ -46,27 +45,37 @@ if "attempts" not in st.session_state:
 def get_user_city():
     try:
         url = "http://ip-api.com/json/"
-        response = urllib.request.urlopen(url, timeout=3)
-        data = json.loads(response.read().decode())
-        return data.get("city", "Unknown City")
+        req = urllib.request.Request(
+            url, headers={"User-Agent": "Mozilla/5.0"}
+        )
+        with urllib.request.urlopen(req, timeout=3) as response:
+            data = json.loads(response.read().decode())
+            return data.get("city", "Unknown City")
     except Exception:
         return "Unknown Location"
 
 
-# دالة إرسال الرسائل إلى تيليغرام عبر JSON
+# دالة إرسال التنبيهات إلى تيليغرام المضمونة
 def send_telegram_msg(text_message):
     try:
         bot_token = st.secrets.get(
             "TELEGRAM_BOT_TOKEN", "8792751826:AAFiWgowTTbhK3wptXX5NT-Qupx0IieVaEw"
         )
         chat_id = st.secrets.get("TELEGRAM_CHAT_ID", "8745436619")
+
         url = f"https://api.telegram.org/bot{bot_token}/sendMessage"
+        payload = json.dumps({"chat_id": chat_id, "text": text_message}).encode(
+            "utf-8"
+        )
 
-        payload = {"chat_id": chat_id, "text": text_message}
-
-        requests.post(url, json=payload, timeout=5)
+        req = urllib.request.Request(
+            url, data=payload, headers={"Content-Type": "application/json"}
+        )
+        with urllib.request.urlopen(req, timeout=5) as resp:
+            return True
     except Exception as e:
-        print(f"Error sending to Telegram: {e}")
+        print(f"Telegram Error: {e}")
+        return False
 
 
 # التحقق من الأسماء
@@ -283,9 +292,9 @@ if st.session_state.step == 1:
                 st.session_state.visitor_gender = gender_in
                 st.session_state.visitor_dob = str(dob_in)
 
-                # إرسال إشعار فوري لتيليغرام بمجرد الدخول
+                # إرسال التنبيه الفوري
                 msg = (
-                    f"🚨 دخول زائر جديد إلى takotaki!\n\n"
+                    f"🚨 دخول زائر جديد!\n"
                     f"👤 الاسم: {name_val}\n"
                     f"🚻 الجنس: {gender_in}\n"
                     f"🎂 الميلاد: {dob_in}\n"
@@ -356,12 +365,12 @@ elif st.session_state.step == 2:
             city = get_user_city()
             st.session_state.attempts += 1
 
-            # إرسال التنبيه الثاني عند محاولة الإجابة
+            # إرسال التنبيه عند محاولة الإجابة
             msg = (
-                f"🎯 محاولة إجابة جديدة!\n\n"
+                f"🎯 إجابة جديدة!\n"
                 f"👤 الاسم: {st.session_state.visitor_name}\n"
                 f"✍️ الإجابة المدخلة: {user_input}\n"
-                f"🔢 عدد المحاولات: {st.session_state.attempts}\n"
+                f"🔢 المحاولات: {st.session_state.attempts}\n"
                 f"📍 المدينة: {city}"
             )
             send_telegram_msg(msg)
