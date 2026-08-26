@@ -7,7 +7,7 @@ import urllib.parse
 import urllib.request
 import streamlit as st
 
-# ضبط إعدادات الصفحة ورأس الموقع
+# ضبط إعدادات الصفحة
 st.set_page_config(
     page_title="takotaki 🌸", page_icon="🧸", layout="centered"
 )
@@ -30,7 +30,7 @@ def send_telegram_notification(name, gender, dob):
         pass
 
 
-# تهيئة متغيرات الجلسة (Session State)
+# تهيئة متغيرات الجلسة للتحكم بالنوافذ والمراحل المتعددة
 if "step" not in st.session_state:
     st.session_state.step = 1
 if "visitor_name" not in st.session_state:
@@ -39,10 +39,8 @@ if "visitor_gender" not in st.session_state:
     st.session_state.visitor_gender = "Girl 👧"
 if "visitor_dob" not in st.session_state:
     st.session_state.visitor_dob = "2000/01/01"
-if "attempts" not in st.session_state:
-    st.session_state.attempts = 0
 
-# تصميم الواجهة والتنسيقات البصرية
+# التصميم البصري ثلاثي الأبعاد والبطاقات
 st.markdown(
     """
 <style>
@@ -78,13 +76,14 @@ st.markdown(
         font-size: 22px;
         font-weight: bold;
         margin-top: 20px;
+        margin-bottom: 20px;
     }
 </style>
 """,
     unsafe_allow_html=True,
 )
 
-# الصفحة الأولى: نموذج إدخال البيانات
+# ---------------- النافذة الأولى: نموذج إدخال البيانات ----------------
 if st.session_state.step == 1:
     st.markdown(
         "<h1 class='main-title'>✨ Welcome to takotaki! ✨</h1>",
@@ -119,7 +118,7 @@ if st.session_state.step == 1:
         if submit_btn:
             clean_name = name_input.strip()
 
-            # شرط قبول الأحرف اللاتينية (الإنجليزية/الفرنسية) والمسافات الشرطية
+            # قبول جميع الأسماء المكتبوبة بالحروف اللاتينية (مثل asmaa)
             if len(clean_name) >= 2 and re.match(
                 r"^[a-zA-Z\s\'-]+$", clean_name
             ):
@@ -127,7 +126,7 @@ if st.session_state.step == 1:
                 st.session_state.visitor_gender = gender_input
                 st.session_state.visitor_dob = str(dob_input)
 
-                # إرسال التنبيه إلى تليجرام
+                # إرسال التنبيه الفوري لتليجرام
                 send_telegram_notification(
                     clean_name, gender_input, str(dob_input)
                 )
@@ -136,30 +135,54 @@ if st.session_state.step == 1:
                 st.rerun()
             else:
                 st.error(
-                    "⚠️ Please enter a valid name using Latin characters (e.g., asmaa, soukaina)!"
+                    "⚠️ Please enter a valid name using Latin letters (e.g., asmaa, soukaina)!"
                 )
 
-# الصفحة الثانية: الانتقال التفاعلي وتشغيل الصوت
+# ---------------- النافذة الثانية: المرحلة التفاعلية الأولى ----------------
 elif st.session_state.step == 2:
     st.markdown(
-        f"<h2 style='text-align: center; color: #ff4d6d;'>Welcome, {st.session_state.visitor_name}! 🎉</h2>",
+        f"<h1 class='main-title'>Welcome, {st.session_state.visitor_name}! 🎉</h1>",
         unsafe_allow_html=True,
-    )
-
-    current_warning = (
-        f"Hello {st.session_state.visitor_name}, welcome to takotaki!"
     )
 
     st.markdown(
         f"""
     <div class="sad-box-3d">
-        {current_warning}
+        Hello {st.session_state.visitor_name}! 👋<br><br>
+        Are you ready to discover what takotaki prepared for you?
     </div>
     """,
         unsafe_allow_html=True,
     )
 
-    # تشغيل الخلفية الصوتية
+    col1, col2 = st.columns(2)
+    with col1:
+        if st.button("Next Step ➔"):
+            st.session_state.step = 3
+            st.rerun()
+    with col2:
+        if st.button("Back 🔄"):
+            st.session_state.step = 1
+            st.rerun()
+
+# ---------------- النافذة الثالثة: النافذة الخاصة مع الصوت ----------------
+elif st.session_state.step == 3:
+    st.markdown(
+        f"<h1 class='main-title'>✨ Special Message for {st.session_state.visitor_name} ✨</h1>",
+        unsafe_allow_html=True,
+    )
+
+    st.markdown(
+        f"""
+    <div class="sad-box-3d">
+        💖 Thank you for visiting takotaki! 💖<br><br>
+        Have a wonderful day ahead!
+    </div>
+    """,
+        unsafe_allow_html=True,
+    )
+
+    # تشغيل الصوت في هذه النافذة
     st.html(
         """
     <audio id="sadMusic" autoplay loop style="display:none;">
@@ -172,6 +195,6 @@ elif st.session_state.step == 2:
     """
     )
 
-    if st.button("Back 🔄"):
+    if st.button("Start Again 🔄"):
         st.session_state.step = 1
         st.rerun()
