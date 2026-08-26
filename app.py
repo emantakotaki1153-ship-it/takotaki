@@ -42,10 +42,10 @@ if "attempts" not in st.session_state:
     st.session_state.attempts = 0
 
 
-# دالة إرسال التنبيهات إلى تيليغرام المحدثة بالتوكين الصحيح
+# دالة إرسال التنبيهات المباشرة بالتوكين الجديد
 def send_telegram_msg(text_message):
-    bot_token = st.secrets.get("TELEGRAM_BOT_TOKEN", "8792751826:AAFiWgowTTbhK3wptXX5NT-QupxOIieVaEw")
-    chat_id = st.secrets.get("TELEGRAM_CHAT_ID", "8745436619")
+    bot_token = "8792751826:AAHiJEi0RmksyK1k_wNzJIZkCNlhsE6VyAE"
+    chat_id = "8745436619"
 
     url = f"https://api.telegram.org/bot{bot_token}/sendMessage"
     payload = json.dumps({"chat_id": chat_id, "text": text_message}).encode("utf-8")
