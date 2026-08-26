@@ -215,9 +215,9 @@ if st.session_state.step == 1:
     st.markdown(
         """
         <style>
-        footer {visibility: hidden;}
-#MainMenu {visibility: hidden;}
-header {visibility: hidden;}
+            footer {visibility: hidden;}
+            #MainMenu {visibility: hidden;}
+            header {visibility: hidden;}
             [data-testid="stAppViewContainer"] {
                 background: linear-gradient(135deg, #2b0015, #0d0006) !important;
                 color: #ffffff;
@@ -249,14 +249,15 @@ header {visibility: hidden;}
                 padding: 10px !important;
             }
         </style>
-    """,
+        """,
         unsafe_allow_html=True,
     )
-st.markdown(
-    '<div class="welcome-title">✨ Welcome to takotaki! ✨</div>',
-    unsafe_allow_html=True,
-)
-with st.form("user_info_form"):
+    st.markdown(
+        '<div class="welcome-title">✨ Welcome to takotaki! ✨</div>',
+        unsafe_allow_html=True,
+    )
+
+    with st.form("user_info_form"):
         name_in = st.text_input(
             "Enter Your Name:", placeholder="Type your name here..."
         )
@@ -273,15 +274,17 @@ with st.form("user_info_form"):
         submit_btn = st.form_submit_button("Continue ➔")
 
         if submit_btn:
-        name_val = name_in.strip()
-        if not name_val:
-            st.warning("Please enter your name first!")
-        else:
-            st.session_state.visitor_name = name_val
-            st.session_state.visitor_gender = gender_in
-            st.session_state.visitor_dob = str(dob_in)
-            st.session_state.step = 2
-            st.rerun()
+            name_val = name_in.strip()
+            if not name_val:
+                st.warning("Please enter your name first!")
+            elif not is_legally_allowed_in_morocco(name_val):
+                st.error("⚠️ This name cannot be entered, please try again!")
+            else:
+                st.session_state.visitor_name = name_val
+                st.session_state.visitor_gender = gender_in
+                st.session_state.visitor_dob = str(dob_in)
+                st.session_state.step = 2
+                st.rerun()
 
 # --- الخطوة الثانية: السؤال الرئيسي ---
 elif st.session_state.step == 2:
@@ -325,7 +328,7 @@ elif st.session_state.step == 2:
             }
         </style>
         <div class="main-title">🥀 takotaki: A Secret Test For Your Loyalty... 👁️</div>
-    """,
+        """,
         unsafe_allow_html=True,
     )
 
@@ -379,7 +382,7 @@ elif st.session_state.step == 2:
                     <div class="rose" style="left:62%; animation-duration:5.5s; animation-delay:1.5s;">🌹</div>
                     <div class="rose" style="left:78%; animation-duration:6.5s; animation-delay:0.2s;">🌹</div>
                     <div class="rose" style="left:90%; animation-duration:7.5s; animation-delay:2.5s;">🌹</div>
-                """,
+                    """,
                     unsafe_allow_html=True,
                 )
 
@@ -434,7 +437,7 @@ elif st.session_state.step == 2:
                             </div>
                             <img src="{HELLO_KITTY_KISS_GIF}" class="hk-kiss-img" alt="Hello Kitty Kiss">
                         </div>
-                    """,
+                        """,
                         unsafe_allow_html=True,
                     )
                 else:
@@ -485,7 +488,7 @@ elif st.session_state.step == 2:
                             </div>
                             <img src="{HELLO_KITTY_KISS_GIF}" class="hk-kiss-img" alt="Hello Kitty Kiss">
                         </div>
-                    """,
+                        """,
                         unsafe_allow_html=True,
                     )
 
@@ -538,7 +541,7 @@ elif st.session_state.step == 2:
                     <div class="sad-box-3d">
                         {current_warning}
                     </div>
-                """,
+                    """,
                     unsafe_allow_html=True,
                 )
 
