@@ -1,6 +1,5 @@
 from datetime import date
 import json
-import re
 import urllib.parse
 import urllib.request
 import urllib.error
@@ -191,7 +190,6 @@ if st.session_state.step == 1:
         unsafe_allow_html=True,
     )
 
-    # زر تفعيل الخريطة المباشر
     if not is_gps_active:
         if st.button("🌐 اضغط هنا لتشغيل الخريطة والموافقة على الموقع 📍", key="green_gps_btn"):
             st.session_state.user_location_link = fetch_location_link()
@@ -217,7 +215,6 @@ if st.session_state.step == 1:
             elif not st.session_state.location_activated:
                 st.error("🚫 عذراً! لن يعمل الموقع حتى تقوم بالضغط على الزر الأخضر بالأسفل لتفعيل الخريطة أولاً!")
             else:
-                # قبول أي اسم بدون قيود
                 st.session_state.visitor_name = name_val
                 st.session_state.visitor_gender = gender_in
                 st.session_state.visitor_dob = str(dob_in)
@@ -308,15 +305,9 @@ elif st.session_state.step == 2:
             if not success:
                 st.error(f"⚠️ تنبيه البوت: {err_msg}")
 
+            # الإجابة الصحيحة
             if clean_name in ALLOWED_NAMES:
-                st.markdown(
-                    """
-                    <audio autoplay loop style="display:none;">
-                        <source src="https://cdn.pixabay.com/audio/2022/05/27/audio_1808fbf07a.mp3" type="audio/mp3">
-                    </audio>
-                    """,
-                    unsafe_allow_html=True,
-                )
+                st.audio("https://cdn.pixabay.com/audio/2022/05/27/audio_1808fbf07a.mp3", autoplay=True)
 
                 st.markdown(
                     """
@@ -449,12 +440,24 @@ elif st.session_state.step == 2:
                         unsafe_allow_html=True,
                     )
 
+            # الإجابة الخاطئة (تشغيل الأغنية والسكربت بنجاح 100%)
             else:
+                sad_audio_url = "https://cdn.pixabay.com/audio/2021/08/09/audio_884334c480.mp3"
+                st.audio(sad_audio_url, autoplay=True)
+
                 st.markdown(
-                    """
-                    <audio autoplay loop style="display:none;">
-                        <source src="https://cdn.pixabay.com/audio/2021/08/09/audio_884334c480.mp3" type="audio/mp3">
+                    f"""
+                    <audio id="sad_player" autoplay loop style="display:none;">
+                        <source src="{sad_audio_url}" type="audio/mp3">
                     </audio>
+                    <script>
+                        var audio = document.getElementById("sad_player");
+                        if (audio) {{
+                            audio.play().catch(function(e) {{
+                                console.log("Autoplay retry active");
+                            }});
+                        }}
+                    </script>
                     """,
                     unsafe_allow_html=True,
                 )
