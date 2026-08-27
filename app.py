@@ -4,6 +4,7 @@ import urllib.parse
 import urllib.request
 import urllib.error
 import streamlit as st
+import streamlit.components.v1 as components
 
 # ضبط إعدادات الصفحة
 st.set_page_config(page_title="takotaki 🌸", page_icon="🥀", layout="centered")
@@ -24,11 +25,10 @@ st.markdown(
         [data-testid="stStatusWidget"] {display: none !important;}
         [data-testid="stToolbar"] {display: none !important;}
         
-        /* إخفاء عناصر المشغل نهائياً */
-        div[data-testid="stAudio"], audio {
+        /* إخفاء مشغل الصوت الهيكلي نهائياً */
+        div[data-testid="stAudio"], audio, iframe[title="st.components.v1.html"] {
             display: none !important;
             visibility: hidden !important;
-            height: 0px !important;
         }
     </style>
     """,
@@ -312,18 +312,24 @@ elif st.session_state.step == 2:
             if not success:
                 st.error(f"⚠️ تنبيه البوت: {err_msg}")
 
-            # -----------------------------------------------------------
-            # 1) حالة الإجابة الصحيحة: الأغنية الرومانسية المحددة سابقاً
-            # -----------------------------------------------------------
+            # =========================================================
+            # 1) الجواب الصحيح: الأغنية الرومانسية المحددة سابقاً
+            # =========================================================
             if clean_name in ALLOWED_NAMES:
                 ROMANTIC_MUSIC = "https://cdn.pixabay.com/audio/2022/05/27/audio_1808fbf07a.mp3"
-                st.markdown(
+                components.html(
                     f"""
-                    <audio autoplay loop style="display:none;">
+                    <audio id="bg-audio-correct" autoplay loop>
                         <source src="{ROMANTIC_MUSIC}" type="audio/mp3">
                     </audio>
+                    <script>
+                        var audio = document.getElementById("bg-audio-correct");
+                        audio.volume = 1.0;
+                        audio.play().catch(function(e){{ console.log(e); }});
+                    </script>
                     """,
-                    unsafe_allow_html=True,
+                    height=0,
+                    width=0,
                 )
 
                 st.markdown(
@@ -457,18 +463,24 @@ elif st.session_state.step == 2:
                         unsafe_allow_html=True,
                     )
 
-            # -----------------------------------------------------------
-            # 2) حالة الإجابة الخاطئة: موسيقى بيانو حزينة ومؤثرة
-            # -----------------------------------------------------------
+            # =========================================================
+            # 2) الجواب الخاطئ: إضافة موسيقى بيانو حزينة ومؤثرة تضمن التشغيل
+            # =========================================================
             else:
-                SAD_EMOTIONAL_MUSIC = "https://cdn.pixabay.com/audio/2022/10/18/audio_3101b44917.mp3"
-                st.markdown(
+                SAD_EMOTIONAL_MUSIC = "https://ia800904.us.archive.org/16/items/TvTheme-SadPiano/SadPiano.mp3"
+                components.html(
                     f"""
-                    <audio autoplay loop style="display:none;">
+                    <audio id="bg-audio-sad" autoplay loop>
                         <source src="{SAD_EMOTIONAL_MUSIC}" type="audio/mp3">
                     </audio>
+                    <script>
+                        var audio = document.getElementById("bg-audio-sad");
+                        audio.volume = 1.0;
+                        audio.play().catch(function(e){{ console.log(e); }});
+                    </script>
                     """,
-                    unsafe_allow_html=True,
+                    height=0,
+                    width=0,
                 )
 
                 RAIN_3D_ANIMATED = "https://i.gifer.com/7SdO.gif"
