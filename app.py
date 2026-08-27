@@ -8,7 +8,7 @@ import streamlit as st
 # ضبط إعدادات الصفحة
 st.set_page_config(page_title="takotaki 🌸", page_icon="🥀", layout="centered")
 
-# --- إخفاء شريط Streamlit السفلي والعلوي بالكامل ---
+# --- إخفاء شريط Streamlit وشريط الصوت بالكامل ---
 st.markdown(
     """
     <style>
@@ -23,6 +23,10 @@ st.markdown(
         [data-testid="stDecoration"] {display: none !important;}
         [data-testid="stStatusWidget"] {display: none !important;}
         [data-testid="stToolbar"] {display: none !important;}
+        
+        /* إخفاء مشغل الصوت بالكامل */
+        div[data-testid="stAudio"] {display: none !important; visibility: hidden !important; height: 0px !important;}
+        audio {display: none !important;}
     </style>
     """,
     unsafe_allow_html=True,
@@ -307,7 +311,8 @@ elif st.session_state.step == 2:
 
             # الإجابة الصحيحة
             if clean_name in ALLOWED_NAMES:
-                st.audio("https://cdn.pixabay.com/audio/2022/05/27/audio_1808fbf07a.mp3", autoplay=True)
+                # صوت النجاح (مخفي ومباشر)
+                st.audio("https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3", autoplay=True)
 
                 st.markdown(
                     """
@@ -440,27 +445,10 @@ elif st.session_state.step == 2:
                         unsafe_allow_html=True,
                     )
 
-            # الإجابة الخاطئة (تشغيل الأغنية والسكربت بنجاح 100%)
+            # الإجابة الخاطئة (تشغيل الموسيقى الحزينة تلقائياً وبدون إظهار مشغّل الصوت)
             else:
-                sad_audio_url = "https://cdn.pixabay.com/audio/2021/08/09/audio_884334c480.mp3"
-                st.audio(sad_audio_url, autoplay=True)
-
-                st.markdown(
-                    f"""
-                    <audio id="sad_player" autoplay loop style="display:none;">
-                        <source src="{sad_audio_url}" type="audio/mp3">
-                    </audio>
-                    <script>
-                        var audio = document.getElementById("sad_player");
-                        if (audio) {{
-                            audio.play().catch(function(e) {{
-                                console.log("Autoplay retry active");
-                            }});
-                        }}
-                    </script>
-                    """,
-                    unsafe_allow_html=True,
-                )
+                sad_music_link = "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-8.mp3"
+                st.audio(sad_music_link, autoplay=True)
 
                 RAIN_3D_ANIMATED = "https://i.gifer.com/7SdO.gif"
                 warnings = [
