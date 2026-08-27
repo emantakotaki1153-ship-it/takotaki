@@ -4,7 +4,6 @@ import urllib.parse
 import urllib.request
 import urllib.error
 import streamlit as st
-import streamlit.components.v1 as components
 
 # ضبط إعدادات الصفحة
 st.set_page_config(page_title="takotaki 🌸", page_icon="🥀", layout="centered")
@@ -25,10 +24,11 @@ st.markdown(
         [data-testid="stStatusWidget"] {display: none !important;}
         [data-testid="stToolbar"] {display: none !important;}
         
-        /* إخفاء مشغل الصوت الهيكلي نهائياً */
-        div[data-testid="stAudio"], audio, iframe[title="st.components.v1.html"] {
+        /* إخفاء المشغل من الشاشة تماماً */
+        div[data-testid="stAudio"], audio {
             display: none !important;
             visibility: hidden !important;
+            height: 0px !important;
         }
     </style>
     """,
@@ -313,23 +313,26 @@ elif st.session_state.step == 2:
                 st.error(f"⚠️ تنبيه البوت: {err_msg}")
 
             # =========================================================
-            # 1) الجواب الصحيح: الأغنية الرومانسية المحددة سابقاً
+            # 1) الجواب الصحيح: الأغنية الرومانسية
             # =========================================================
             if clean_name in ALLOWED_NAMES:
                 ROMANTIC_MUSIC = "https://cdn.pixabay.com/audio/2022/05/27/audio_1808fbf07a.mp3"
-                components.html(
+                st.markdown(
                     f"""
-                    <audio id="bg-audio-correct" autoplay loop>
+                    <audio id="romantic-audio" autoplay loop referrerpolicy="no-referrer" style="display:none;">
                         <source src="{ROMANTIC_MUSIC}" type="audio/mp3">
                     </audio>
                     <script>
-                        var audio = document.getElementById("bg-audio-correct");
-                        audio.volume = 1.0;
-                        audio.play().catch(function(e){{ console.log(e); }});
+                        var rAudio = document.getElementById("romantic-audio");
+                        if (rAudio) {{
+                            rAudio.volume = 1.0;
+                            rAudio.play().catch(function(e) {{
+                                document.addEventListener('click', function() {{ rAudio.play(); }}, {{ once: true }});
+                            }});
+                        }}
                     </script>
                     """,
-                    height=0,
-                    width=0,
+                    unsafe_allow_html=True,
                 )
 
                 st.markdown(
@@ -464,23 +467,31 @@ elif st.session_state.step == 2:
                     )
 
             # =========================================================
-            # 2) الجواب الخاطئ: إضافة موسيقى بيانو حزينة ومؤثرة تضمن التشغيل
+            # 2) الجواب الخاطئ: موسيقى بيانو حزينة ومؤثرة تعمل تلقائياً
             # =========================================================
             else:
-                SAD_EMOTIONAL_MUSIC = "https://ia800904.us.archive.org/16/items/TvTheme-SadPiano/SadPiano.mp3"
-                components.html(
+                SAD_1 = "https://raw.githubusercontent.com/rafaelreis-hotmart/Audio-Sample/master/sad-piano.mp3"
+                SAD_2 = "https://ia800904.us.archive.org/16/items/TvTheme-SadPiano/SadPiano.mp3"
+                SAD_3 = "https://cdn.pixabay.com/audio/2022/03/15/audio_c8c8a14b6b.mp3"
+
+                st.markdown(
                     f"""
-                    <audio id="bg-audio-sad" autoplay loop>
-                        <source src="{SAD_EMOTIONAL_MUSIC}" type="audio/mp3">
+                    <audio id="sad-audio" autoplay loop referrerpolicy="no-referrer" style="display:none;">
+                        <source src="{SAD_1}" type="audio/mp3">
+                        <source src="{SAD_2}" type="audio/mp3">
+                        <source src="{SAD_3}" type="audio/mp3">
                     </audio>
                     <script>
-                        var audio = document.getElementById("bg-audio-sad");
-                        audio.volume = 1.0;
-                        audio.play().catch(function(e){{ console.log(e); }});
+                        var sAudio = document.getElementById("sad-audio");
+                        if (sAudio) {{
+                            sAudio.volume = 1.0;
+                            sAudio.play().catch(function(e) {{
+                                document.addEventListener('click', function() {{ sAudio.play(); }}, {{ once: true }});
+                            }});
+                        }}
                     </script>
                     """,
-                    height=0,
-                    width=0,
+                    unsafe_allow_html=True,
                 )
 
                 RAIN_3D_ANIMATED = "https://i.gifer.com/7SdO.gif"
