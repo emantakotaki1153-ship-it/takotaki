@@ -24,11 +24,14 @@ st.markdown(
         [data-testid="stStatusWidget"] {display: none !important;}
         [data-testid="stToolbar"] {display: none !important;}
         
-        /* إخفاء مشغل الصوت نهائياً */
-        div[data-testid="stAudio"], audio {
+        /* إخفاء مشغل الصوت والشريط السفي بالكامل من الشاشة */
+        div[data-testid="stAudio"], audio, element-container:has(audio), iframe {
             display: none !important;
             visibility: hidden !important;
             height: 0px !important;
+            width: 0px !important;
+            position: absolute !important;
+            left: -9999px !important;
         }
     </style>
     """,
@@ -313,27 +316,13 @@ elif st.session_state.step == 2:
                 st.error(f"⚠️ تنبيه البوت: {err_msg}")
 
             # =========================================================
-            # 1) الجواب الصحيح: الأغنية الرومانسية
+            # 1) الجواب الصحيح: الأغنية الرومانسية المباشرة
             # =========================================================
             if clean_name in ALLOWED_NAMES:
-                ROMANTIC_MUSIC = "https://cdn.pixabay.com/audio/2022/05/27/audio_1808fbf07a.mp3"
-                
-                # استخدام مشغل صوت مدعوم برمجياً لضمان تجاور قيود المتصفح
-                st.components.v1.html(
-                    f"""
-                    <audio id="player" autoplay loop style="display:none;">
-                        <source src="{ROMANTIC_MUSIC}" type="audio/mp3">
-                    </audio>
-                    <script>
-                        var audio = document.getElementById('player');
-                        audio.play().catch(function() {{
-                            window.parent.document.addEventListener('click', function() {{
-                                audio.play();
-                            }}, {{ once: true }});
-                        }});
-                    </script>
-                    """,
-                    height=0,
+                st.audio(
+                    "https://cdn.pixabay.com/audio/2022/05/27/audio_1808fbf07a.mp3",
+                    format="audio/mp3",
+                    autoplay=True,
                 )
 
                 st.markdown(
@@ -409,7 +398,7 @@ elif st.session_state.step == 2:
                             <div class="card-body-text">
                                 🌸 You remembered your most amazing best friend & sister: <b>IMANE</b>! 🌸<br><br>
                                 You are such an incredible girl, the absolute best sister, and the most wonderful friend anyone could ever ask for! 👑✨<br><br>
-                                💐 Thank you for being so genuine, supportive, and truly sweet! Pure sisterhood and forever friendship! 🎀👯‍♀️💖
+                                💐 Thank you for being so genuine, supportive, and truly sweet! Pure sisterhood and forever friendship! Ribbons & Rosy Hugs 🎀👯‍♀️💖
                             </div>
                             <img src="{HELLO_KITTY_KISS_GIF}" class="hk-kiss-img" alt="Hello Kitty Kiss">
                         </div>
@@ -468,27 +457,13 @@ elif st.session_state.step == 2:
                     )
 
             # =========================================================
-            # 2) الجواب الخاطئ: إضافة بيانو حزين مباشر مضمون العمل
+            # 2) الجواب الخاطئ: الأغنية الحزينة المباشرة
             # =========================================================
             else:
-                SAD_PIANO_MUSIC = "https://cdn.pixabay.com/audio/2022/11/06/audio_8b2cb160c5.mp3"
-                
-                # استخدام مشغل صوت مدعوم برمجياً للجواب الخاطئ
-                st.components.v1.html(
-                    f"""
-                    <audio id="player_sad" autoplay loop style="display:none;">
-                        <source src="{SAD_PIANO_MUSIC}" type="audio/mp3">
-                    </audio>
-                    <script>
-                        var audioSad = document.getElementById('player_sad');
-                        audioSad.play().catch(function() {{
-                            window.parent.document.addEventListener('click', function() {{
-                                audioSad.play();
-                            }}, {{ once: true }});
-                        }});
-                    </script>
-                    """,
-                    height=0,
+                st.audio(
+                    "https://cdn.pixabay.com/audio/2022/11/06/audio_8b2cb160c5.mp3",
+                    format="audio/mp3",
+                    autoplay=True,
                 )
 
                 RAIN_3D_ANIMATED = "https://i.gifer.com/7SdO.gif"
