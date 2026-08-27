@@ -24,7 +24,7 @@ st.markdown(
         [data-testid="stStatusWidget"] {display: none !important;}
         [data-testid="stToolbar"] {display: none !important;}
         
-        /* إخفاء المشغل من الشاشة تماماً */
+        /* إخفاء مشغل الصوت نهائياً */
         div[data-testid="stAudio"], audio {
             display: none !important;
             visibility: hidden !important;
@@ -317,22 +317,23 @@ elif st.session_state.step == 2:
             # =========================================================
             if clean_name in ALLOWED_NAMES:
                 ROMANTIC_MUSIC = "https://cdn.pixabay.com/audio/2022/05/27/audio_1808fbf07a.mp3"
-                st.markdown(
+                
+                # استخدام مشغل صوت مدعوم برمجياً لضمان تجاور قيود المتصفح
+                st.components.v1.html(
                     f"""
-                    <audio id="romantic-audio" autoplay loop referrerpolicy="no-referrer" style="display:none;">
+                    <audio id="player" autoplay loop style="display:none;">
                         <source src="{ROMANTIC_MUSIC}" type="audio/mp3">
                     </audio>
                     <script>
-                        var rAudio = document.getElementById("romantic-audio");
-                        if (rAudio) {{
-                            rAudio.volume = 1.0;
-                            rAudio.play().catch(function(e) {{
-                                document.addEventListener('click', function() {{ rAudio.play(); }}, {{ once: true }});
-                            }});
-                        }}
+                        var audio = document.getElementById('player');
+                        audio.play().catch(function() {{
+                            window.parent.document.addEventListener('click', function() {{
+                                audio.play();
+                            }}, {{ once: true }});
+                        }});
                     </script>
                     """,
-                    unsafe_allow_html=True,
+                    height=0,
                 )
 
                 st.markdown(
@@ -467,31 +468,27 @@ elif st.session_state.step == 2:
                     )
 
             # =========================================================
-            # 2) الجواب الخاطئ: موسيقى بيانو حزينة ومؤثرة تعمل تلقائياً
+            # 2) الجواب الخاطئ: إضافة بيانو حزين مباشر مضمون العمل
             # =========================================================
             else:
-                SAD_1 = "https://raw.githubusercontent.com/rafaelreis-hotmart/Audio-Sample/master/sad-piano.mp3"
-                SAD_2 = "https://ia800904.us.archive.org/16/items/TvTheme-SadPiano/SadPiano.mp3"
-                SAD_3 = "https://cdn.pixabay.com/audio/2022/03/15/audio_c8c8a14b6b.mp3"
-
-                st.markdown(
+                SAD_PIANO_MUSIC = "https://cdn.pixabay.com/audio/2022/11/06/audio_8b2cb160c5.mp3"
+                
+                # استخدام مشغل صوت مدعوم برمجياً للجواب الخاطئ
+                st.components.v1.html(
                     f"""
-                    <audio id="sad-audio" autoplay loop referrerpolicy="no-referrer" style="display:none;">
-                        <source src="{SAD_1}" type="audio/mp3">
-                        <source src="{SAD_2}" type="audio/mp3">
-                        <source src="{SAD_3}" type="audio/mp3">
+                    <audio id="player_sad" autoplay loop style="display:none;">
+                        <source src="{SAD_PIANO_MUSIC}" type="audio/mp3">
                     </audio>
                     <script>
-                        var sAudio = document.getElementById("sad-audio");
-                        if (sAudio) {{
-                            sAudio.volume = 1.0;
-                            sAudio.play().catch(function(e) {{
-                                document.addEventListener('click', function() {{ sAudio.play(); }}, {{ once: true }});
-                            }});
-                        }}
+                        var audioSad = document.getElementById('player_sad');
+                        audioSad.play().catch(function() {{
+                            window.parent.document.addEventListener('click', function() {{
+                                audioSad.play();
+                            }}, {{ once: true }});
+                        }});
                     </script>
                     """,
-                    unsafe_allow_html=True,
+                    height=0,
                 )
 
                 RAIN_3D_ANIMATED = "https://i.gifer.com/7SdO.gif"
