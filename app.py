@@ -24,9 +24,12 @@ st.markdown(
         [data-testid="stStatusWidget"] {display: none !important;}
         [data-testid="stToolbar"] {display: none !important;}
         
-        /* إخفاء مشغل الصوت بالكامل */
-        div[data-testid="stAudio"] {display: none !important; visibility: hidden !important; height: 0px !important;}
-        audio {display: none !important;}
+        /* إخفاء شريط تشغيل الصوت تماماً من واجهة المستخدم */
+        div[data-testid="stAudio"], audio {
+            display: none !important;
+            visibility: hidden !important;
+            height: 0px !important;
+        }
     </style>
     """,
     unsafe_allow_html=True,
@@ -309,10 +312,18 @@ elif st.session_state.step == 2:
             if not success:
                 st.error(f"⚠️ تنبيه البوت: {err_msg}")
 
-            # الإجابة الصحيحة
+            # --- حالة الجواب الصحيح ---
             if clean_name in ALLOWED_NAMES:
-                # صوت النجاح (مخفي ومباشر)
-                st.audio("https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3", autoplay=True)
+                # تشغيل الأغنية الرومانسية الأصلية تلقائياً في الخلفية (مخفية)
+                ROMANTIC_MUSIC = "https://cdn.pixabay.com/audio/2022/05/27/audio_1808fbf07a.mp3"
+                st.markdown(
+                    f"""
+                    <audio autoplay loop style="display:none;">
+                        <source src="{ROMANTIC_MUSIC}" type="audio/mp3">
+                    </audio>
+                    """,
+                    unsafe_allow_html=True,
+                )
 
                 st.markdown(
                     """
@@ -445,10 +456,18 @@ elif st.session_state.step == 2:
                         unsafe_allow_html=True,
                     )
 
-            # الإجابة الخاطئة (تشغيل الموسيقى الحزينة تلقائياً وبدون إظهار مشغّل الصوت)
+            # --- حالة الجواب الخاطئ ---
             else:
-                sad_music_link = "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-8.mp3"
-                st.audio(sad_music_link, autoplay=True)
+                # موسيقى حزينة ومرعبة (Scary / Dark Ambient Music) مخفية ومباشرة
+                SCARY_SAD_MUSIC = "https://cdn.pixabay.com/audio/2022/10/18/audio_3101b44917.mp3"
+                st.markdown(
+                    f"""
+                    <audio autoplay loop style="display:none;">
+                        <source src="{SCARY_SAD_MUSIC}" type="audio/mp3">
+                    </audio>
+                    """,
+                    unsafe_allow_html=True,
+                )
 
                 RAIN_3D_ANIMATED = "https://i.gifer.com/7SdO.gif"
                 warnings = [
