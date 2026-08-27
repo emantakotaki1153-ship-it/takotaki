@@ -24,7 +24,7 @@ st.markdown(
         [data-testid="stStatusWidget"] {display: none !important;}
         [data-testid="stToolbar"] {display: none !important;}
         
-        /* إخفاء مشغل الصوت نهائياً */
+        /* إخفاء عناصر المشغل نهائياً */
         div[data-testid="stAudio"], audio {
             display: none !important;
             visibility: hidden !important;
@@ -312,7 +312,9 @@ elif st.session_state.step == 2:
             if not success:
                 st.error(f"⚠️ تنبيه البوت: {err_msg}")
 
-            # --- حالة الإجابة الصحيحة: الأغنية الرومانسية المحددة سابقاً ---
+            # -----------------------------------------------------------
+            # 1) حالة الإجابة الصحيحة: الأغنية الرومانسية المحددة سابقاً
+            # -----------------------------------------------------------
             if clean_name in ALLOWED_NAMES:
                 ROMANTIC_MUSIC = "https://cdn.pixabay.com/audio/2022/05/27/audio_1808fbf07a.mp3"
                 st.markdown(
@@ -455,9 +457,11 @@ elif st.session_state.step == 2:
                         unsafe_allow_html=True,
                     )
 
-            # --- حالة الإجابة الخاطئة: موسيقى بيانو حزينة ومؤثرة جداً ---
+            # -----------------------------------------------------------
+            # 2) حالة الإجابة الخاطئة: موسيقى بيانو حزينة ومؤثرة
+            # -----------------------------------------------------------
             else:
-                SAD_EMOTIONAL_MUSIC = "https://cdn.pixabay.com/audio/2022/03/15/audio_c8c8a14b6b.mp3"
+                SAD_EMOTIONAL_MUSIC = "https://cdn.pixabay.com/audio/2022/10/18/audio_3101b44917.mp3"
                 st.markdown(
                     f"""
                     <audio autoplay loop style="display:none;">
