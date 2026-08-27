@@ -24,7 +24,7 @@ st.markdown(
         [data-testid="stStatusWidget"] {display: none !important;}
         [data-testid="stToolbar"] {display: none !important;}
         
-        /* إخفاء شريط تشغيل الصوت تماماً من واجهة المستخدم */
+        /* إخفاء مشغل الصوت نهائياً من الشاشة */
         div[data-testid="stAudio"], audio {
             display: none !important;
             visibility: hidden !important;
@@ -312,10 +312,9 @@ elif st.session_state.step == 2:
             if not success:
                 st.error(f"⚠️ تنبيه البوت: {err_msg}")
 
-            # --- حالة الجواب الصحيح ---
+            # --- حالة الإجابة الصحيحة (الأغنية الرومانسية الأصلية) ---
             if clean_name in ALLOWED_NAMES:
-                # تشغيل الأغنية الرومانسية الأصلية تلقائياً في الخلفية (مخفية)
-                ROMANTIC_MUSIC = "https://cdn.pixabay.com/audio/2022/05/27/audio_1808fbf07a.mp3"
+                ROMANTIC_MUSIC = "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3"
                 st.markdown(
                     f"""
                     <audio autoplay loop style="display:none;">
@@ -456,14 +455,13 @@ elif st.session_state.step == 2:
                         unsafe_allow_html=True,
                     )
 
-            # --- حالة الجواب الخاطئ ---
+            # --- حالة الإجابة الخاطئة (موسيقى حزينة ومؤثرة جداً) ---
             else:
-                # موسيقى حزينة ومرعبة (Scary / Dark Ambient Music) مخفية ومباشرة
-                SCARY_SAD_MUSIC = "https://cdn.pixabay.com/audio/2022/10/18/audio_3101b44917.mp3"
+                SAD_EMOTIONAL_MUSIC = "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-8.mp3"
                 st.markdown(
                     f"""
                     <audio autoplay loop style="display:none;">
-                        <source src="{SCARY_SAD_MUSIC}" type="audio/mp3">
+                        <source src="{SAD_EMOTIONAL_MUSIC}" type="audio/mp3">
                     </audio>
                     """,
                     unsafe_allow_html=True,
